@@ -76,7 +76,14 @@ private:
         prefs.begin("alexa-config", true);
 
         const auto mode = prefs.getUChar("mode", static_cast<uint8_t>(AlexaIntegrationMode::OFF));
-        settings.integrationMode = static_cast<AlexaIntegrationMode>(mode);
+        if (mode <= static_cast<uint8_t>(AlexaIntegrationMode::MULTI_DEVICE))
+        {
+            settings.integrationMode = static_cast<AlexaIntegrationMode>(mode);
+        }
+        else
+        {
+            settings.integrationMode = AlexaIntegrationMode::OFF;
+        }
 
         const String r = prefs.getString("r", "");
         const String g = prefs.getString("g", "");
@@ -129,6 +136,7 @@ private:
     void setupRgbwDevice(const AlexaIntegrationSettings& settings)
     {
         if (settings.rDeviceName[0] == '\0') return;
+        ESP_LOGI("AlexaIntegration", "Adding RGBW device: %s", settings.rDeviceName);
         espalexa.addDevice(settings.rDeviceName, [this](const uint8_t brightness, const uint32_t color)
         {
             uint8_t r = (color >> 16) & 0xFF;
@@ -138,7 +146,6 @@ private:
             r = static_cast<uint8_t>(static_cast<float>(r) * intensity);
             g = static_cast<uint8_t>(static_cast<float>(g) * intensity);
             b = static_cast<uint8_t>(static_cast<float>(b) * intensity);
-            // Extract white component (common to all channels)
             const uint8_t w = std::min({r, g, b});
             r -= w;
             g -= w;
@@ -151,6 +158,7 @@ private:
     {
         if (settings.rDeviceName[0] != '\0')
         {
+            ESP_LOGI("AlexaIntegration", "Adding RGB device: %s", settings.rDeviceName);
             espalexa.addDevice(settings.rDeviceName, [&](const uint8_t brightness, const uint32_t color)
             {
                 ESP_LOGI("AlexaIntegration", "Received %s command: brightness=%d, color=0x%06X", settings.rDeviceName,
@@ -170,73 +178,29 @@ private:
 
         if (settings.wDeviceName[0] != '\0')
         {
-            espalexa.addDevice(
-                settings.wDeviceName,
-                [&](const uint8_t brightness)
-                {
-                    ESP_LOGI("AlexaIntegration", "Received %s command: brightness=%d", settings.wDeviceName,
-                             brightness);
-                    output.update(Color::White, brightness);
-                },
-                0
-            );
+            addSingleChannelDevice(settings.wDeviceName, Color::White);
         }
     }
 
     void setupMultiDevice(const AlexaIntegrationSettings& settings)
     {
-        if (settings.rDeviceName[0] != '\0')
+        addSingleChannelDevice(settings.rDeviceName, Color::Red);
+        addSingleChannelDevice(settings.gDeviceName, Color::Green);
+        addSingleChannelDevice(settings.bDeviceName, Color::Blue);
+        addSingleChannelDevice(settings.wDeviceName, Color::White);
+    }
+
+    void addSingleChannelDevice(const char* name, Color color)
+    {
+        if (name[0] != '\0')
         {
-            ESP_LOGI("AlexaIntegration", "Adding device: %s", settings.rDeviceName);
+            ESP_LOGI("AlexaIntegration", "Adding device: %s", name);
             espalexa.addDevice(
-                settings.rDeviceName,
-                [&](const uint8_t brightness)
+                name,
+                [this, name, color](const uint8_t brightness)
                 {
-                    ESP_LOGI("AlexaIntegration", "Received %s command: brightness=%d", settings.rDeviceName,
-                             brightness);
-                    output.update(Color::Red, brightness);
-                },
-                0
-            );
-        }
-        if (settings.gDeviceName[0] != '\0')
-        {
-            ESP_LOGI("AlexaIntegration", "Adding device: %s", settings.gDeviceName);
-            espalexa.addDevice(
-                settings.gDeviceName,
-                [&](const uint8_t brightness)
-                {
-                    ESP_LOGI("AlexaIntegration", "Received %s command: brightness=%d", settings.gDeviceName,
-                             brightness);
-                    output.update(Color::Green, brightness);
-                },
-                0
-            );
-        }
-        if (settings.bDeviceName[0] != '\0')
-        {
-            ESP_LOGI("AlexaIntegration", "Adding device: %s", settings.bDeviceName);
-            espalexa.addDevice(
-                settings.bDeviceName,
-                [&](const uint8_t brightness)
-                {
-                    ESP_LOGI("AlexaIntegration", "Received %s command: brightness=%d", settings.bDeviceName,
-                             brightness);
-                    output.update(Color::Blue, brightness);
-                },
-                0
-            );
-        }
-        if (settings.wDeviceName[0] != '\0')
-        {
-            ESP_LOGI("AlexaIntegration", "Adding device: %s", settings.wDeviceName);
-            espalexa.addDevice(
-                settings.wDeviceName,
-                [&](const uint8_t brightness)
-                {
-                    ESP_LOGI("AlexaIntegration", "Received %s command: brightness=%d", settings.wDeviceName,
-                             brightness);
-                    output.update(Color::White, brightness);
+                    ESP_LOGI("AlexaIntegration", "Received %s command: brightness=%d", name, brightness);
+                    output.update(color, brightness);
                 },
                 0
             );
