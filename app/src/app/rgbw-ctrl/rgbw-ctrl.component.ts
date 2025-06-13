@@ -50,6 +50,7 @@ import {
 import {SimpleWiFiConnectDialogComponent} from './simple-wi-fi-connect-dialog/simple-wi-fi-connect-dialog.component';
 import {CustomWiFiConnectDialogComponent} from './custom-wi-fi-connect-dialog/custom-wi-fi-connect-dialog.component';
 import {MAX_OTA_PASSWORD_LENGTH, MAX_OTA_USERNAME_LENGTH} from '../ota.model';
+import {KilobytesPipe} from '../kb.pipe';
 
 const BLE_NAME = "rgbw-ctrl";
 
@@ -58,15 +59,14 @@ const DEVICE_RESTART_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0000";
 const DEVICE_NAME_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
 const FIRMWARE_VERSION_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
 const OTA_CREDENTIALS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
-
+const DEVICE_HEAP_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004";
 const WIFI_SERVICE = "12345678-1234-1234-1234-1234567890ab";
-const WIFI_DETAILS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004";
-const WIFI_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0005";
-const WIFI_SCAN_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0006";
-const WIFI_SCAN_RESULT_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0007";
-
+const WIFI_DETAILS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0000";
+const WIFI_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
+const WIFI_SCAN_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
+const WIFI_SCAN_RESULT_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
 const ALEXA_SERVICE = "12345678-1234-1234-1234-1234567890ba";
-const ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0008";
+const ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
 
 @Component({
   selector: 'app-rgbw-ctrl',
@@ -87,7 +87,8 @@ const ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0008";
     MatProgressSpinnerModule,
     NumberToIpPipe,
     ReactiveFormsModule,
-    MatChipsModule
+    MatChipsModule,
+    KilobytesPipe
   ],
   templateUrl: './rgbw-ctrl.component.html',
   styleUrls: ['./rgbw-ctrl.component.scss']
@@ -114,6 +115,7 @@ export class RgbwCtrlComponent implements OnDestroy {
   private deviceNameCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private firmwareVersionCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private otaCredentialsCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+  private deviceHeapCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 
   private wifiService: BluetoothRemoteGATTService | null = null;
   private wifiDetailsCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
@@ -130,6 +132,7 @@ export class RgbwCtrlComponent implements OnDestroy {
 
   firmwareVersion: string | null = null;
   deviceName: string | null = null;
+  deviceHeap: number = 0;
 
   wifiStatus: WiFiStatus = WiFiStatus.UNKNOWN;
   wifiScanStatus: WiFiScanStatus = WiFiScanStatus.NOT_STARTED;
@@ -395,12 +398,19 @@ export class RgbwCtrlComponent implements OnDestroy {
 
   private async initBleDeviceNameServices(server: BluetoothRemoteGATTServer) {
     this.deviceNameService = await server.getPrimaryService(DEVICE_DETAILS_SERVICE);
+
     this.deviceRestartCharacteristic = await this.deviceNameService.getCharacteristic(DEVICE_RESTART_CHARACTERISTIC);
-    this.deviceNameCharacteristic = await this.deviceNameService.getCharacteristic(DEVICE_NAME_CHARACTERISTIC);
     this.firmwareVersionCharacteristic = await this.deviceNameService.getCharacteristic(FIRMWARE_VERSION_CHARACTERISTIC);
-    this.deviceNameCharacteristic.addEventListener('characteristicvaluechanged', (ev: any) => this.deviceNameChanged(ev.target.value));
     this.otaCredentialsCharacteristic = await this.deviceNameService.getCharacteristic(OTA_CREDENTIALS_CHARACTERISTIC);
+
+    this.deviceNameCharacteristic = await this.deviceNameService.getCharacteristic(DEVICE_NAME_CHARACTERISTIC);
+    this.deviceNameCharacteristic.addEventListener('characteristicvaluechanged', (ev: any) => this.deviceNameChanged(ev.target.value));
     await this.deviceNameCharacteristic.startNotifications();
+
+
+    this.deviceHeapCharacteristic = await this.deviceNameService.getCharacteristic(DEVICE_HEAP_CHARACTERISTIC);
+    this.deviceHeapCharacteristic.addEventListener('characteristicvaluechanged', (ev: any) => this.deviceHeapChanged(ev.target.value));
+    await this.deviceHeapCharacteristic.startNotifications();
   }
 
   private async initBleAlexaIntegrationServices(server: BluetoothRemoteGATTServer) {
@@ -433,6 +443,10 @@ export class RgbwCtrlComponent implements OnDestroy {
   private deviceNameChanged(view: DataView) {
     const buffer = new Uint8Array(view.buffer);
     this.deviceName = decodeCString(buffer);
+  }
+
+  private deviceHeapChanged(view: DataView) {
+    this.deviceHeap = view.getUint32(0, true);
   }
 
   private otaCredentialsChanged(view: DataView) {

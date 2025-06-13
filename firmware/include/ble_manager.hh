@@ -24,15 +24,16 @@ class BleManager
         static constexpr auto DEVICE_NAME_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
         static constexpr auto FIRMWARE_VERSION_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
         static constexpr auto OTA_CREDENTIALS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
+        static constexpr auto DEVICE_HEAP_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004";
 
         static constexpr auto WIFI_SERVICE = "12345678-1234-1234-1234-1234567890ab";
-        static constexpr auto WIFI_DETAILS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004";
-        static constexpr auto WIFI_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0005";
-        static constexpr auto WIFI_SCAN_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0006";
-        static constexpr auto WIFI_SCAN_RESULT_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0007";
+        static constexpr auto WIFI_DETAILS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0000";
+        static constexpr auto WIFI_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
+        static constexpr auto WIFI_SCAN_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
+        static constexpr auto WIFI_SCAN_RESULT_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
 
         static constexpr auto ALEXA_SERVICE = "12345678-1234-1234-1234-1234567890ba";
-        static constexpr auto ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0008";
+        static constexpr auto ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
     };
 
     static constexpr auto LOG_TAG = "Network";
@@ -48,6 +49,7 @@ class BleManager
     BLECharacteristic* deviceNameCharacteristic = nullptr;
     BLECharacteristic* firmwareVersionCharacteristic = nullptr;
     BLECharacteristic* otaCredentialsCharacteristic = nullptr;
+    BLECharacteristic* deviceHeapCharacteristic = nullptr;
 
     BLEService* bleWiFiService = nullptr;
     BLECharacteristic* wifiDetailsCharacteristic = nullptr;
@@ -106,6 +108,20 @@ public:
         setupBle();
         this->server->getAdvertising()->start();
         ESP_LOGI(LOG_TAG, "BLE advertising started with device name: %s", wifiManager.getDeviceName());
+    }
+
+    void handle() const
+    {
+        if (!deviceHeapCharacteristic) return;
+        const auto now = millis();
+        static auto lastSend = now;
+        if (now - lastSend >= 1000)
+        {
+            lastSend = now;
+            auto heapSize = ESP.getFreeHeap();
+            deviceHeapCharacteristic->setValue(reinterpret_cast<uint8_t*>(&heapSize), sizeof(heapSize));
+            deviceHeapCharacteristic->notify();
+        }
     }
 
     void end() const
@@ -173,6 +189,13 @@ private:
             BLE_UUID::OTA_CREDENTIALS_CHARACTERISTIC,
             BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE,
             new OtaCredentialsCallback(this)
+        );
+
+        deviceHeapCharacteristic = createCharacteristic(
+            deviceDetailsService,
+            BLE_UUID::DEVICE_HEAP_CHARACTERISTIC,
+            BLECharacteristic::PROPERTY_NOTIFY,
+            nullptr
         );
 
         deviceDetailsService->start();

@@ -43,6 +43,10 @@
         <div class="label">Firmware Version:</div>
         <span>v{{ firmwareVersion }}</span>
       </div>
+      <div class="info-item">
+        <div class="label">Free Heap:</div>
+        <span>{{ deviceHeap | kb:3 }}</span>
+      </div>
       <div class="info-item" *ngIf="wifiDetails.ssid">
         <div class="label">Configured network:</div>
         <span>{{ wifiDetails.ssid }}</span>

@@ -60,6 +60,7 @@ void loop()
     boardButton.handle(now);
     alexaIntegration.handle();
     ws.cleanupClients();
+    bleManager.handle();
 
     boardLED.handle(
         bleManager.isInitialised(),
