@@ -1,0 +1,399 @@
+<h1>rgbw-ctrl configuration page</h1>
+
+<div class="button-container">
+  <button mat-raised-button color="warn" (click)="disconnect()" *ngIf="connected; else connectButton"
+          matTooltip="Disconnect from BLE device">
+    <mat-icon aria-label="Disconnect Bluetooth">bluetooth_disabled</mat-icon>
+    Disconnect from your device
+  </button>
+  <ng-template #connectButton>
+    <button mat-raised-button color="accent" (click)="connectBleDevice()" matTooltip="Connect to BLE device">
+      <mat-icon aria-label="Connect Bluetooth">bluetooth</mat-icon>
+      Connect to your device
+    </button>
+  </ng-template>
+
+  <button mat-raised-button color="warn" (click)="restartDevice()" [disabled]="!connected"
+          matTooltip="Restart the device">
+    <mat-icon>restart_alt</mat-icon>
+    Restart Device
+  </button>
+</div>
+
+<!-- Device Info -->
+<mat-card *ngIf="initialized">
+  <mat-card-header>
+    <mat-card-title>
+      <div style="min-height: 40px">
+        <span>Device Information</span>
+      </div>
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content *ngIf="wifiDetails">
+    <mat-card appearance="outlined" style="margin-top: 0.5rem; padding: 1rem">
+      <div class="info-item" style="margin-top: 1rem">
+        <div class="label">Device Name</div>
+        <span>{{ deviceName }}
+          <button mat-icon-button class="small-icon-button">
+          <mat-icon (click)="editDeviceName()">settings</mat-icon>
+        </button>
+      </span>
+      </div>
+      <div class="info-item">
+        <div class="label">Firmware Version:</div>
+        <span>v{{ firmwareVersion }}</span>
+      </div>
+      <div class="info-item" *ngIf="wifiDetails.ssid">
+        <div class="label">Configured network:</div>
+        <span>{{ wifiDetails.ssid }}</span>
+      </div>
+      <div class="info-item">
+        <div class="label">WiFi Status:</div>
+        <span [ngSwitch]="wifiStatus">
+        <ng-container *ngSwitchCase="WiFiStatus.DISCONNECTED">Desconectado</ng-container>
+        <ng-container *ngSwitchCase="WiFiStatus.CONNECTED">Conectado</ng-container>
+        <ng-container *ngSwitchCase="WiFiStatus.CONNECTED_NO_IP">Conectado, mas sem IP</ng-container>
+        <ng-container *ngSwitchCase="WiFiStatus.WRONG_PASSWORD">Senha incorreta</ng-container>
+        <ng-container *ngSwitchCase="WiFiStatus.NO_AP_FOUND">Rede não encontrada</ng-container>
+        <ng-container *ngSwitchCase="WiFiStatus.CONNECTION_FAILED">Falha na conexão</ng-container>
+        <ng-container *ngSwitchDefault>Desconhecido</ng-container>
+      </span>
+      </div>
+      <div class="info-item">
+        <div class="label">MAC Address:</div>
+        <span>{{ wifiDetails.mac }}</span>
+      </div>
+      <div class="info-item" *ngIf="wifiDetails.ip">
+        <div class="label">IP:</div>
+        <span>{{ wifiDetails.ip | numberToIp }}</span>
+      </div>
+      <div class="info-item" *ngIf="wifiDetails.gateway">
+        <div class="label">Gateway:</div>
+        <span>{{ wifiDetails.gateway | numberToIp }}</span>
+      </div>
+      <div class="info-item" *ngIf="wifiDetails.subnet">
+        <div class="label">Subnet:</div>
+        <span>{{ wifiDetails.subnet | numberToIp }}</span>
+      </div>
+      <div class="info-item" *ngIf="wifiDetails.dns">
+        <div class="label">DNS:</div>
+        <span>{{ wifiDetails.dns | numberToIp }}</span>
+      </div>
+      <div class="info-item" *ngIf="wifiDetails.ip">
+        <div class="label">OTA Link:</div>
+        <span>
+          <a href="http://{{ wifiDetails.ip | numberToIp }}/update" target="_blank">
+            http://{{ wifiDetails.ip | numberToIp }}/update
+          </a>
+        </span>
+      </div>
+    </mat-card>
+  </mat-card-content>
+</mat-card>
+
+<mat-card class="alexa-card" *ngIf="initialized">
+  <mat-card-header>
+    <mat-card-title>
+      <div>
+        <span>OTA (Firmware update)</span>
+      </div>
+      <button mat-stroked-button matTooltip="Reload OTA credentials"
+              (click)="loadOtaCredentials()" [disabled]="loadingOtaCredentials || !connected" class="scan-button">
+        <mat-progress-spinner *ngIf="loadingOtaCredentials" diameter="20" mode="indeterminate"
+                              color="accent"></mat-progress-spinner>
+        Reload
+      </button>
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-card appearance="outlined" style="margin-top: 0.5rem; padding: 1rem">
+      <form [formGroup]="otaCredentialsForm" autocomplete="off">
+        <mat-form-field appearance="outline" floatLabel="always">
+          <mat-label>Username</mat-label>
+          <input matInput formControlName="username">
+          <mat-hint align="end">
+            {{ otaCredentialsForm.controls.username.value.length }} / {{ MAX_OTA_USERNAME_LENGTH }}
+          </mat-hint>
+          <mat-error *ngIf="otaCredentialsForm.controls.username.hasError('required')">
+            This field is required
+          </mat-error>
+          <mat-error *ngIf="otaCredentialsForm.controls.username.hasError('maxlength')">
+            Maximum {{ MAX_OTA_USERNAME_LENGTH }} characters
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" floatLabel="always">
+          <mat-label>Password</mat-label>
+          <input matInput formControlName="password" type="password" #otaPassInput>
+          <button
+            mat-icon-button
+            matSuffix
+            (click)="otaPassInput.type === 'password' ? otaPassInput.type = 'text' : otaPassInput.type = 'password'"
+            [attr.aria-label]="'Hide password'"
+            [attr.aria-pressed]="otaPassInput.type === 'password'"
+          >
+            <mat-icon>{{ otaPassInput.type === 'password' ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <mat-hint align="end">
+            {{ otaCredentialsForm.controls.password.value.length }} / {{ MAX_OTA_PASSWORD_LENGTH }}
+          </mat-hint>
+          <mat-error *ngIf="otaCredentialsForm.controls.password.hasError('required')">
+            This field is required
+          </mat-error>
+          <mat-error *ngIf="otaCredentialsForm.controls.password.hasError('maxlength')">
+            Maximum {{ MAX_OTA_PASSWORD_LENGTH }} characters
+          </mat-error>
+        </mat-form-field>
+      </form>
+    </mat-card>
+  </mat-card-content>
+  <mat-card-actions align="end">
+    <button mat-raised-button color="primary"
+            [disabled]="otaCredentialsForm.invalid || !connected"
+            (click)="applyOtaCredentials()">
+      Apply
+    </button>
+  </mat-card-actions>
+</mat-card>
+
+<mat-card class="alexa-card" *ngIf="initialized">
+  <mat-card-header>
+    <mat-card-title>
+      <div>
+        <span>Alexa Integration</span>
+      </div>
+      <button mat-stroked-button matTooltip="Reload Alexa integration settings"
+              (click)="loadAlexaIntegrationSettings()" [disabled]="loadingAlexa || !connected" class="scan-button">
+        <mat-progress-spinner *ngIf="loadingAlexa" diameter="20" mode="indeterminate"
+                              color="accent"></mat-progress-spinner>
+        Reload
+      </button>
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-card appearance="outlined"
+              style="margin-top: 0.5rem; padding: 1rem; display: grid; grid-template-columns: auto 1fr">
+      <span style="place-self: center; font-weight: bold">Mode:</span>
+      <mat-chip-listbox aria-label="Alexa integration mode" style="margin: 1rem">
+        <mat-chip-option
+          *ngFor="let mode of alexaIntegrationModes"
+          [selected]="alexaIntegrationForm.value.integrationMode === mode.value"
+          (click)="resetAlexaIntegrationForm(mode.value)"
+          (keydown.enter)="resetAlexaIntegrationForm(mode.value)"
+          (keydown.space)="resetAlexaIntegrationForm(mode.value)"
+          [value]="mode.value"
+          [matTooltip]="mode.title">
+          {{ mode.label }}
+        </mat-chip-option>
+      </mat-chip-listbox>
+      <form [formGroup]="alexaIntegrationForm" autocomplete="off" style="grid-column: span 2">
+        <ng-container [ngSwitch]="alexaIntegrationForm.value.integrationMode">
+          <div *ngSwitchCase="AlexaIntegrationMode.OFF"></div>
+          <!-- RGBW_DEVICE: Only rDeviceName is used -->
+          <mat-form-field appearance="outline" floatLabel="always" *ngSwitchCase="AlexaIntegrationMode.RGBW_DEVICE">
+            <mat-label>Device name</mat-label>
+            <input matInput formControlName="rDeviceName">
+            <mat-hint align="end">
+              {{ alexaIntegrationForm.controls.rDeviceName.value.length }} / {{ ALEXA_MAX_DEVICE_NAME_LENGTH }}
+            </mat-hint>
+            <button mat-icon-button matSuffix
+                    [attr.aria-label]="'Toggle R device enabled'"
+                    type="button"
+                    (click)="toggleDeviceEnabled('rDeviceName')">
+              <mat-icon>
+                {{ alexaIntegrationForm.controls.rDeviceName.enabled ? 'check_box' : 'check_box_outline_blank' }}
+              </mat-icon>
+            </button>
+            <mat-error *ngIf="alexaIntegrationForm.controls.rDeviceName.hasError('required')">
+              This field is required
+            </mat-error>
+            <mat-error *ngIf="alexaIntegrationForm.controls.rDeviceName.hasError('maxlength')">
+              Maximum {{ ALEXA_MAX_DEVICE_NAME_LENGTH }} characters
+            </mat-error>
+          </mat-form-field>
+
+          <!-- RGB_DEVICE: rDeviceName and wDeviceName are used -->
+          <ng-container *ngSwitchCase="AlexaIntegrationMode.RGB_DEVICE">
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Device <strong>RGB</strong> name</mat-label>
+              <input matInput formControlName="rDeviceName">
+              <mat-hint align="end">
+                {{ alexaIntegrationForm.controls.rDeviceName.value.length }} / {{ ALEXA_MAX_DEVICE_NAME_LENGTH }}
+              </mat-hint>
+              <button mat-icon-button matSuffix
+                      [attr.aria-label]="'Toggle RGB device enabled'"
+                      type="button"
+                      (click)="toggleDeviceEnabled('rDeviceName')">
+                <mat-icon>
+                  {{ alexaIntegrationForm.controls.rDeviceName.enabled ? 'check_box' : 'check_box_outline_blank' }}
+                </mat-icon>
+              </button>
+              <mat-error *ngIf="alexaIntegrationForm.controls.rDeviceName.hasError('required')">
+                This field is required
+              </mat-error>
+              <mat-error *ngIf="alexaIntegrationForm.controls.rDeviceName.hasError('maxlength')">
+                Maximum {{ ALEXA_MAX_DEVICE_NAME_LENGTH }} characters
+              </mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Device <strong>W</strong> name</mat-label>
+              <input matInput formControlName="wDeviceName">
+              <mat-hint align="end">
+                {{ alexaIntegrationForm.controls.wDeviceName.value.length }} / {{ ALEXA_MAX_DEVICE_NAME_LENGTH }}
+              </mat-hint>
+              <button mat-icon-button matSuffix
+                      [attr.aria-label]="'Toggle W device enabled'"
+                      type="button"
+                      (click)="toggleDeviceEnabled('wDeviceName')">
+                <mat-icon>
+                  {{ alexaIntegrationForm.controls.wDeviceName.enabled ? 'check_box' : 'check_box_outline_blank' }}
+                </mat-icon>
+              </button>
+              <mat-error *ngIf="alexaIntegrationForm.controls.wDeviceName.hasError('required')">
+                This field is required
+              </mat-error>
+              <mat-error *ngIf="alexaIntegrationForm.controls.wDeviceName.hasError('maxlength')">
+                Maximum {{ ALEXA_MAX_DEVICE_NAME_LENGTH }} characters
+              </mat-error>
+            </mat-form-field>
+          </ng-container>
+
+          <!-- MULTI_DEVICE: All device names are used -->
+          <ng-container *ngSwitchCase="AlexaIntegrationMode.MULTI_DEVICE">
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Device <strong>R</strong> name</mat-label>
+              <input matInput formControlName="rDeviceName">
+              <mat-hint align="end">
+                {{ alexaIntegrationForm.controls.rDeviceName.value.length }} / {{ ALEXA_MAX_DEVICE_NAME_LENGTH }}
+              </mat-hint>
+              <button mat-icon-button matSuffix
+                      [attr.aria-label]="'Toggle R device enabled'"
+                      type="button"
+                      (click)="toggleDeviceEnabled('rDeviceName')">
+                <mat-icon>
+                  {{ alexaIntegrationForm.controls.rDeviceName.enabled ? 'check_box' : 'check_box_outline_blank' }}
+                </mat-icon>
+              </button>
+              <mat-error *ngIf="alexaIntegrationForm.controls.rDeviceName.hasError('required')">
+                This field is required
+              </mat-error>
+              <mat-error *ngIf="alexaIntegrationForm.controls.rDeviceName.hasError('maxlength')">
+                Maximum {{ ALEXA_MAX_DEVICE_NAME_LENGTH }} characters
+              </mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Device <strong>G</strong> name</mat-label>
+              <input matInput formControlName="gDeviceName">
+              <mat-hint align="end">
+                {{ alexaIntegrationForm.controls.gDeviceName.value.length }} / {{ ALEXA_MAX_DEVICE_NAME_LENGTH }}
+              </mat-hint>
+              <button mat-icon-button matSuffix
+                      [attr.aria-label]="'Toggle G device enabled'"
+                      type="button"
+                      (click)="toggleDeviceEnabled('gDeviceName')">
+                <mat-icon>
+                  {{ alexaIntegrationForm.controls.gDeviceName.enabled ? 'check_box' : 'check_box_outline_blank' }}
+                </mat-icon>
+              </button>
+              <mat-error *ngIf="alexaIntegrationForm.controls.gDeviceName.hasError('required')">
+                This field is required
+              </mat-error>
+              <mat-error *ngIf="alexaIntegrationForm.controls.gDeviceName.hasError('maxlength')">
+                Maximum {{ ALEXA_MAX_DEVICE_NAME_LENGTH }} characters
+              </mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Device <strong>B</strong> name</mat-label>
+              <input matInput formControlName="bDeviceName">
+              <mat-hint align="end">
+                {{ alexaIntegrationForm.controls.bDeviceName.value.length }} / {{ ALEXA_MAX_DEVICE_NAME_LENGTH }}
+              </mat-hint>
+              <button mat-icon-button matSuffix
+                      [attr.aria-label]="'Toggle B device enabled'"
+                      type="button"
+                      (click)="toggleDeviceEnabled('bDeviceName')">
+                <mat-icon>
+                  {{ alexaIntegrationForm.controls.bDeviceName.enabled ? 'check_box' : 'check_box_outline_blank' }}
+                </mat-icon>
+              </button>
+              <mat-error *ngIf="alexaIntegrationForm.controls.bDeviceName.hasError('required')">
+                This field is required
+              </mat-error>
+              <mat-error *ngIf="alexaIntegrationForm.controls.bDeviceName.hasError('maxlength')">
+                Maximum {{ ALEXA_MAX_DEVICE_NAME_LENGTH }} characters
+              </mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Device <strong>W</strong> name</mat-label>
+              <input matInput formControlName="wDeviceName">
+              <mat-hint align="end">
+                {{ alexaIntegrationForm.controls.wDeviceName.value.length }} / {{ ALEXA_MAX_DEVICE_NAME_LENGTH }}
+              </mat-hint>
+              <button mat-icon-button matSuffix
+                      [attr.aria-label]="'Toggle W device enabled'"
+                      type="button"
+                      (click)="toggleDeviceEnabled('wDeviceName')">
+                <mat-icon>
+                  {{ alexaIntegrationForm.controls.wDeviceName.enabled ? 'check_box' : 'check_box_outline_blank' }}
+                </mat-icon>
+              </button>
+              <mat-error *ngIf="alexaIntegrationForm.controls.wDeviceName.hasError('required')">
+                This field is required
+              </mat-error>
+              <mat-error *ngIf="alexaIntegrationForm.controls.wDeviceName.hasError('maxlength')">
+                Maximum {{ ALEXA_MAX_DEVICE_NAME_LENGTH }} characters
+              </mat-error>
+            </mat-form-field>
+          </ng-container>
+          <div *ngSwitchDefault>
+            <span>Unknown integration mode.</span>
+          </div>
+        </ng-container>
+      </form>
+    </mat-card>
+  </mat-card-content>
+  <mat-card-actions align="end">
+    <button mat-raised-button color="primary"
+            [disabled]="alexaIntegrationForm.invalid || !connected"
+            (click)="applyAlexaIntegrationSettings()">
+      Apply
+    </button>
+  </mat-card-actions>
+</mat-card>
+
+<mat-card *ngIf="initialized">
+  <mat-card-header style="margin-bottom: 1rem; justify-content: center;">
+    <mat-card-title>
+      <div>
+        <mat-icon aria-label="Wi-Fi">wifi</mat-icon>
+        <span>WiFi</span>
+      </div>
+      <button mat-stroked-button (click)="startWifiScan()" [disabled]="scanning || !connected" class="scan-button">
+        <mat-progress-spinner *ngIf="scanning" diameter="20" mode="indeterminate" color="accent"></mat-progress-spinner>
+        Scan
+      </button>
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-subtitle>Available Networks:</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-selection-list [multiple]="false">
+          @for (network of wifiScanResult; track network.ssid) {
+            <mat-list-item (click)="connectToNetwork(network)" [class.selected]="network.ssid === wifiDetails?.ssid">
+              <mat-icon>rss_feed</mat-icon>
+              {{ network.ssid }}
+            </mat-list-item>
+          }
+        </mat-selection-list>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-raised-button color="primary" (click)="connectToCustomNetwork()">
+          <mat-icon>add</mat-icon>
+          Custom Network
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </mat-card-content>
+</mat-card>

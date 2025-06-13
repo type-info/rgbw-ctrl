@@ -1,0 +1,58 @@
+<h2 mat-dialog-title>Connect to network</h2>
+<mat-dialog-content [formGroup]="form" class="mat-typography">
+
+  <mat-form-field appearance="fill">
+    <mat-label>SSID</mat-label>
+    <input matInput formControlName="ssid" [readonly]="ssidReadonly">
+  </mat-form-field>
+
+  <ng-container formGroupName="credentials">
+    <mat-form-field appearance="fill" *ngIf="form.controls.encryptionType.value !== WifiAuthMode.WIFI_AUTH_OPEN">
+      <mat-label>Password</mat-label>
+      <input matInput
+             type="password"
+             formControlName="password" (keyup.enter)="submit()"
+             [attr.aria-describedby]="'password-hint'"/>
+      <mat-hint id="password-hint" align="start">
+        <ng-container [ngSwitch]="form.controls.encryptionType.value">
+          <ng-container *ngSwitchCase="WifiAuthMode.WIFI_AUTH_WEP">
+            5 or 13 ASCII, or 10 or 26 HEX digits
+          </ng-container>
+          <ng-container *ngSwitchDefault>
+            8–63 ASCII characters
+          </ng-container>
+        </ng-container>
+      </mat-hint>
+      <mat-hint align="end">{{ password.length }}/{{ maxPasswordLength }}</mat-hint>
+
+      <!-- Error Messages -->
+      <mat-error *ngIf="form.controls.credentials.controls.password.hasError('required')">
+        Password is required
+      </mat-error>
+      <mat-error *ngIf="form.controls.credentials.controls.password.hasError('minlength')">
+        Password must be at least {{ minPasswordLength }} characters
+      </mat-error>
+      <mat-error *ngIf="form.controls.credentials.controls.password.hasError('maxlength')">
+        Password must be at most {{ maxPasswordLength }} characters
+      </mat-error>
+      <mat-error
+        *ngIf="form.controls.credentials.controls.password.hasError('pattern') && form.controls.encryptionType.value === WifiAuthMode.WIFI_AUTH_WEP">
+        WEP password must be 5 or 13 ASCII or 10 or 26 HEX digits
+      </mat-error>
+      <mat-error
+        *ngIf="form.controls.credentials.controls.password.hasError('pattern') && form.controls.encryptionType.value !== WifiAuthMode.WIFI_AUTH_WEP">
+        Password contains invalid characters
+      </mat-error>
+    </mat-form-field>
+  </ng-container>
+
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-stroked-button
+          [mat-dialog-close]="form.value"
+          color="primary"
+          [disabled]="form.invalid">
+    Connect
+  </button>
+</mat-dialog-actions>

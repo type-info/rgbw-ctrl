@@ -1,0 +1,31 @@
+<h2 mat-dialog-title>Connect to network</h2>
+<mat-dialog-content [formGroup]="form" class="mat-typography">
+
+  <mat-form-field appearance="fill">
+    <mat-label>Encryption Type</mat-label>
+    <mat-select formControlName="encryptionType">
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_OPEN">Open</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WEP">WEP</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WPA_PSK">WPA-PSK</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WPA2_PSK">WPA2-PSK</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WPA_WPA2_PSK">WPA/WPA2-PSK</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_ENTERPRISE">Enterprise</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WPA2_ENTERPRISE">WPA2-Enterprise</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WPA3_PSK">WPA3-PSK</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WPA2_WPA3_PSK">WPA2/WPA3-PSK</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WAPI_PSK">WAPI-PSK</mat-option>
+      <mat-option [value]="WiFiEncryptionType.WIFI_AUTH_WPA3_ENT_192">WPA3-Enterprise 192</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-stroked-button
+          [mat-dialog-close]="form.value"
+          color="primary"
+          [disabled]="form.invalid">
+    Next
+  </button>
+</mat-dialog-actions>

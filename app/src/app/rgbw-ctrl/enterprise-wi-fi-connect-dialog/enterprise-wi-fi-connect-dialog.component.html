@@ -1,0 +1,62 @@
+<h2 mat-dialog-title>Connect to enterprise network</h2>
+<mat-dialog-content [formGroup]="form" class="mat-typography">
+
+  <mat-form-field appearance="fill">
+    <mat-label>SSID</mat-label>
+    <input matInput formControlName="ssid"  [readonly]="ssidReadonly">
+  </mat-form-field>
+  <ng-container formGroupName="credentials">
+    <mat-form-field appearance="fill">
+      <mat-label>Identity</mat-label>
+      <input matInput formControlName="identity" autocomplete="username">
+      <mat-error *ngIf="form.controls.credentials.controls.identity.hasError('required')">
+        Identity is required
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill">
+      <mat-label>Username</mat-label>
+      <input matInput formControlName="username" autocomplete="username">
+      <mat-error *ngIf="form.controls.credentials.controls.username.hasError('required')">
+        Username is required
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" formControlName="password" autocomplete="current-password" (keyup.enter)="submit()">
+      <mat-hint align="start">
+        At least 8 characters
+      </mat-hint>
+      <mat-hint align="end">{{ password.length || 0 }}/64</mat-hint>
+      <mat-error *ngIf="form.controls.credentials.controls.password.hasError('required')">
+        Password is required
+      </mat-error>
+      <mat-error *ngIf="form.controls.credentials.controls.password.hasError('minlength')">
+        Password must be at least 8 characters
+      </mat-error>
+      <mat-error *ngIf="form.controls.credentials.controls.password.hasError('maxlength')">
+        Password must be at most 64 characters
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="fill">
+      <mat-label>Phase 2 authentication</mat-label>
+      <mat-select formControlName="phase2Type">
+        <mat-option *ngFor="let opt of phase2Options" [value]="opt.value">{{ opt.label }}</mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.controls.credentials.controls.phase2Type.hasError('required')">
+        Phase 2 authentication is required
+      </mat-error>
+    </mat-form-field>
+  </ng-container>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-stroked-button
+          [mat-dialog-close]="form.value"
+          color="primary"
+          [disabled]="form.invalid">
+    Connect
+  </button>
+</mat-dialog-actions>

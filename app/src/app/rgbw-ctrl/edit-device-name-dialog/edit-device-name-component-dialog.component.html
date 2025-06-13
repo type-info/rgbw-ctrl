@@ -1,0 +1,22 @@
+<h2 mat-dialog-title>Edit Device Name</h2>
+<mat-dialog-content>
+  <mat-form-field>
+    <span matTextPrefix>{{ DEVICE_NAME_PREFIX }}</span>
+    <input matInput placeholder="Device Name" [formControl]="deviceNameControl" (keyup.enter)="submit()"/>
+    <mat-error *ngIf="deviceNameControl.hasError('required')">Device name is required.</mat-error>
+    <mat-error *ngIf="deviceNameControl.hasError('pattern') && !value.endsWith('-')">
+      Must be letters, numbers or hyphens
+    </mat-error>
+    <mat-error *ngIf="deviceNameControl.hasError('pattern') && value.endsWith('-')">
+      Device name cannot end with a hyphen.
+    </mat-error>
+    <mat-hint align="end">{{ value.length + DEVICE_NAME_PREFIX.length }}/{{ DEVICE_NAME_MAX_LENGTH }}</mat-hint>
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-stroked-button [mat-dialog-close]="DEVICE_NAME_PREFIX + deviceNameControl.value"
+          color="primary" [disabled]="deviceNameControl.invalid">
+    Save
+  </button>
+</mat-dialog-actions>

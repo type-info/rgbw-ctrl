@@ -1,0 +1,109 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.button-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 1rem;
+}
+
+mat-card {
+  min-width: 340px;
+  width: 100%;
+  max-width: 600px;
+}
+
+mat-card-header {
+  ::ng-deep > .mat-mdc-card-header-text {
+    width: 100%;
+    position: relative;
+    min-height: 1em;
+  }
+}
+
+.scan-button {
+  display: flex;
+  place-content: center;
+  float: right;
+
+  ::ng-deep .mdc-button__label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+}
+
+mat-card-title > div {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.4em;
+}
+
+.label {
+  font-weight: 600;
+}
+
+mat-list-item.selected {
+  background-color: var(--mat-list-item-selected-bg, rgba(0, 128, 0, 0.1)) !important;
+
+  mat-icon {
+    color: green;
+  }
+}
+
+.small-icon-button {
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+
+  & > *[role=img] {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .mat-mdc-button-touch-target {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
+.alexa-card {
+
+  mat-card-subtitle {
+    display: flex;
+    align-items: center;
+  }
+
+  mat-chip-listbox {
+    margin-left: 0.5rem;
+  }
+}
+
+mat-form-field {
+  width: 100%;
+}
