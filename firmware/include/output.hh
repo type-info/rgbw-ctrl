@@ -31,6 +31,16 @@ public:
         lights.at(static_cast<size_t>(color))->setValue(value);
     }
 
+    bool getState(Color color) const
+    {
+        return lights.at(static_cast<size_t>(color))->isOn();
+    }
+
+    uint8_t getValue(Color color) const
+    {
+        return lights.at(static_cast<size_t>(color))->getValue();
+    }
+
     void toggle(Color color) const
     {
         lights.at(static_cast<size_t>(color))->toggle();

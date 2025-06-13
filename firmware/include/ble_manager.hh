@@ -436,12 +436,12 @@ private:
                 return;
             }
             memcpy(&settings, pCharacteristic->getValue().data(), sizeof(AlexaIntegrationSettings));
-            AlexaIntegration::applySettings(settings);
+            net->alexaIntegration.applySettings(settings);
         }
 
         void onRead(BLECharacteristic* pCharacteristic) override
         {
-            auto settings = AlexaIntegration::getSettings();
+            auto settings = net->alexaIntegration.getSettings();
             pCharacteristic->setValue(reinterpret_cast<uint8_t*>(&settings), sizeof(AlexaIntegrationSettings));
         }
     };
