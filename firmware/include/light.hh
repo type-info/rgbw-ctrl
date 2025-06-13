@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <Preferences.h>
 #include "hardware.hh"
 
 class Light
@@ -18,26 +19,69 @@ private:
     uint8_t value;
     gpio_num_t pin;
 
+    char valueKey[5]{};
+    char stateKey[5]{};
+
+    mutable std::optional<uint8_t> lastWrittenValue = std::nullopt;
+    mutable bool lastPersistedState = false;
+    mutable uint8_t lastPersistedValue = 255;
+
     void update() const
     {
         const auto& channel = Hardware::PWM_CHANNELS.at(this->pin);
-        auto duty = this->state ? this->value : OFF_VALUE;
-        ledcWrite(channel, invert ? ON_VALUE - duty : duty);
+        const auto duty = this->state ? this->value : OFF_VALUE;
+        uint8_t outputValue = invert ? ON_VALUE - duty : duty;
+
+        if (!lastWrittenValue  || outputValue != lastWrittenValue)
+        {
+            ledcWrite(channel, outputValue);
+            lastWrittenValue = outputValue;
+        }
+
+        if (state != lastPersistedState || value != lastPersistedValue)
+        {
+            persist();
+            lastPersistedState = state;
+            lastPersistedValue = value;
+        }
+    }
+
+    void persist() const
+    {
+        Preferences prefs;
+        prefs.begin("light", false);
+        prefs.putBool(stateKey, state);
+        prefs.putUChar(valueKey, value);
+        prefs.end();
+    }
+
+    void restore()
+    {
+        Preferences prefs;
+        prefs.begin("light", true);
+        state = prefs.getBool(stateKey, false);
+        value = prefs.getUChar(valueKey, OFF_VALUE);
+        prefs.end();
+        lastPersistedState = state;
+        lastPersistedValue = value;
+        update();
     }
 
 public:
-    explicit Light(gpio_num_t pin, bool invert = false) :
+    explicit Light(const gpio_num_t pin, const bool invert = false) :
         invert(invert), state(false), value(OFF_VALUE), pin(pin)
     {
+        snprintf(stateKey, sizeof(stateKey), "%02us", static_cast<unsigned>(pin));
+        snprintf(valueKey, sizeof(valueKey), "%02uv", static_cast<unsigned>(pin));
     }
 
-    void setup() const
+    void setup()
     {
         const auto& channel = Hardware::PWM_CHANNELS.at(pin);
         pinMode(pin, OUTPUT);
         ledcSetup(channel, PWM_FREQUENCY, PWM_RESOLUTION);
         ledcAttachPin(pin, channel);
-        ledcWrite(channel, invert ? ON_VALUE : OFF_VALUE);
+        restore();
     }
 
     void toggle()
@@ -97,6 +141,15 @@ public:
         if (this->value == OFF_VALUE)
             this->state = false;
         this->update();
+    }
+
+    void resetPreferences() const
+    {
+        Preferences prefs;
+        prefs.begin("light", false);
+        prefs.remove(stateKey);
+        prefs.remove(valueKey);
+        prefs.end();
     }
 
     [[nodiscard]] bool isOn() const { return state; }
