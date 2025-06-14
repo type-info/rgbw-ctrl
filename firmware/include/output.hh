@@ -7,6 +7,7 @@
 #include <array>
 #include <Arduino.h>
 #include <algorithm>
+#include <webserver_handler.hh>
 
 class Output
 {
@@ -20,10 +21,39 @@ class Output
     static_assert(static_cast<size_t>(Color::White) < 4, "Color enum out of bounds");
 
 public:
-    void begin()
+    void begin(WebServerHandler& webServerHandler)
     {
         for (auto& light : lights)
             light.setup();
+        webServerHandler.on("/color", HTTP_GET, [this](AsyncWebServerRequest* request)
+        {
+            if (request->hasParam("r") && request->hasParam("g") && request->hasParam("b"))
+            {
+                auto r = this->getValue(Color::Red);
+
+                if (request->hasParam("r"))
+                {
+                    r = request->getParam("r")->value().toInt();
+                }
+                auto g = this->getValue(Color::Green);
+                if (request->hasParam("g"))
+                {
+                    g = request->getParam("g")->value().toInt();
+                }
+                auto b = this->getValue(Color::Blue);
+                if (request->hasParam("b"))
+                {
+                    b = request->getParam("b")->value().toInt();
+                }
+                auto w = this->getValue(Color::White);
+                if (request->hasParam("w"))
+                {
+                    w = request->getParam("w")->value().toInt();
+                }
+                this->setColor(r, g, b, w);
+            }
+            request->send(200, "text/plain", "Color set");
+        });
     }
 
     void update(Color color, const uint8_t value)
@@ -95,5 +125,23 @@ public:
         lights.at(static_cast<size_t>(Color::Green)).setValue(g);
         lights.at(static_cast<size_t>(Color::Blue)).setValue(b);
         lights.at(static_cast<size_t>(Color::White)).setValue(w);
+    }
+
+    [[nodiscard]] std::array<uint8_t, 4> getValues() const
+    {
+        std::array<uint8_t, 4> output = {};
+        std::transform(lights.begin(), lights.end(), output.begin(), [](const auto& light)
+        {
+            return light.getValue();
+        });
+        return output;
+    }
+
+    void setValues(const std::array<uint8_t, 4>& array)
+    {
+        for (size_t i = 0; i < std::min(lights.size(), array.size()); ++i)
+        {
+            update(static_cast<Color>(i), array[i]);
+        }
     }
 };

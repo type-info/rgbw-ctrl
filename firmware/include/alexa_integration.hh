@@ -7,7 +7,7 @@
 
 #include "async_call.hh"
 #include "output.hh"
-#include "web_server.hh"
+#include "webserver_handler.hh"
 
 enum class AlexaIntegrationMode : uint8_t
 {
@@ -44,9 +44,9 @@ public:
     {
     }
 
-    void begin()
+    void begin(WebServerHandler& webServerHandler)
     {
-        webServer.onNotFound([this](AsyncWebServerRequest* request)
+        webServerHandler.getWebServer()->onNotFound([this](AsyncWebServerRequest* request)
         {
             if (!espalexa.handleAlexaApiCall(request))
             {
@@ -62,7 +62,7 @@ public:
                 espalexa.addDevice(device.get());
             }
         }
-        espalexa.begin(&webServer);
+        espalexa.begin(webServerHandler.getWebServer());
     }
 
     void handle()
@@ -79,24 +79,6 @@ public:
     {
         this->settings = settings;
         savePreferences();
-    }
-
-    [[nodiscard]] std::array<uint8_t, 4> getValues() const
-    {
-        std::array<uint8_t, 4> values = {};
-        for (size_t i = 0; i < devices.size(); ++i)
-        {
-            values[i] = output.getState(static_cast<Color>(i)) ? output.getValue(static_cast<Color>(i)) : 0;
-        }
-        return values;
-    }
-
-    void setValues(const std::array<uint8_t, 4>& array)
-    {
-        for (size_t i = 0; i < devices.size(); ++i)
-        {
-            output.update(static_cast<Color>(i), array[i]);
-        }
     }
 
 private:

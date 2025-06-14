@@ -12,7 +12,7 @@
 #include "alexa_integration.hh"
 #include "async_call.hh"
 #include "wifi_manager.hh"
-#include "ota_handler.hh"
+#include "webserver_handler.hh"
 
 
 class BleManager
@@ -23,7 +23,7 @@ class BleManager
         static constexpr auto DEVICE_RESTART_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0000";
         static constexpr auto DEVICE_NAME_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
         static constexpr auto FIRMWARE_VERSION_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
-        static constexpr auto OTA_CREDENTIALS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
+        static constexpr auto HTTP_CREDENTIALS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
         static constexpr auto DEVICE_HEAP_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004";
 
         static constexpr auto WIFI_SERVICE = "12345678-1234-1234-1234-1234567890ab";
@@ -39,9 +39,10 @@ class BleManager
 
     static constexpr auto LOG_TAG = "Network";
 
-    OtaHandler& otaHandler;
+    Output& output;
     WiFiManager& wifiManager;
     AlexaIntegration& alexaIntegration;
+    WebServerHandler& webServerHandler;
 
     BLEServer* server = nullptr;
 
@@ -49,7 +50,7 @@ class BleManager
     BLECharacteristic* restartCharacteristic = nullptr;
     BLECharacteristic* deviceNameCharacteristic = nullptr;
     BLECharacteristic* firmwareVersionCharacteristic = nullptr;
-    BLECharacteristic* otaCredentialsCharacteristic = nullptr;
+    BLECharacteristic* httpCredentialsCharacteristic = nullptr;
     BLECharacteristic* deviceHeapCharacteristic = nullptr;
 
     BLEService* bleWiFiService = nullptr;
@@ -63,9 +64,36 @@ class BleManager
     BLECharacteristic* alexaColorCharacteristic = nullptr;
 
 public:
-    explicit BleManager(WiFiManager& wifiManager, AlexaIntegration& alexaIntegration, OtaHandler& otaHandler)
-        : otaHandler(otaHandler), wifiManager(wifiManager), alexaIntegration(alexaIntegration)
+    explicit BleManager(Output& output, WiFiManager& wifiManager, AlexaIntegration& alexaIntegration,
+                        WebServerHandler& webServerHandler)
+        : output(output), wifiManager(wifiManager), alexaIntegration(alexaIntegration),
+          webServerHandler(webServerHandler)
     {
+    }
+
+    void begin()
+    {
+        webServerHandler.on("/bluetooth", HTTP_GET, [this](AsyncWebServerRequest* request)
+        {
+            auto state = request->getParam("state")->value() == "on" ? true : false;
+            asyncCall([this,state]()
+            {
+                if (state == true)
+                {
+                    if (!this->isInitialised())
+                        this->start();
+                }
+                else
+                {
+                    if (this->isInitialised())
+                        this->stop();
+                }
+            }, 4096, 50);
+            if (state)
+                request->send(200, "text/plain", "Bluetooth enabled");
+            else
+                request->send(200, "text/plain", "Bluetooth disabled, device will restart");
+        });
     }
 
     void start()
@@ -187,11 +215,11 @@ private:
             new FirmwareVersionCallback()
         );
 
-        otaCredentialsCharacteristic = createCharacteristic(
+        httpCredentialsCharacteristic = createCharacteristic(
             deviceDetailsService,
-            BLE_UUID::OTA_CREDENTIALS_CHARACTERISTIC,
+            BLE_UUID::HTTP_CREDENTIALS_CHARACTERISTIC,
             BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE,
-            new OtaCredentialsCallback(this)
+            new HttpCredentialsCallback(this)
         );
 
         deviceHeapCharacteristic = createCharacteristic(
@@ -341,30 +369,30 @@ private:
         }
     };
 
-    class OtaCredentialsCallback final : public BLECharacteristicCallbacks
+    class HttpCredentialsCallback final : public BLECharacteristicCallbacks
     {
         BleManager* net;
 
     public:
-        explicit OtaCredentialsCallback(BleManager* n) : net(n)
+        explicit HttpCredentialsCallback(BleManager* n) : net(n)
         {
         }
 
         void onWrite(BLECharacteristic* pCharacteristic) override
         {
-            OtaCredentials credentials;
-            if (pCharacteristic->getValue().size() != sizeof(OtaCredentials))
+            HttpCredentials credentials;
+            if (pCharacteristic->getValue().size() != sizeof(HttpCredentials))
             {
                 ESP_LOGE(LOG_TAG, "Received invalid OTA credentials length: %d", pCharacteristic->getValue().size());
                 return;
             }
-            memcpy(&credentials, pCharacteristic->getValue().data(), sizeof(OtaCredentials));
-            net->otaHandler.updateCredentials(credentials);
+            memcpy(&credentials, pCharacteristic->getValue().data(), sizeof(HttpCredentials));
+            net->webServerHandler.updateCredentials(credentials);
         }
 
         void onRead(BLECharacteristic* pCharacteristic) override
         {
-            OtaCredentials credentials = OtaHandler::getCredentials();
+            HttpCredentials credentials = WebServerHandler::getCredentials();
             pCharacteristic->setValue(reinterpret_cast<uint8_t*>(&credentials), sizeof(credentials));
         }
     };
@@ -497,12 +525,12 @@ private:
                 return;
             }
             memcpy(values.data(), pCharacteristic->getValue().data(), values.size());
-            net->alexaIntegration.setValues(values);
+            net->output.setValues(values);
         }
 
         void onRead(BLECharacteristic* pCharacteristic) override
         {
-            auto values = net->alexaIntegration.getValues();
+            auto values = net->output.getValues();
             pCharacteristic->setValue(values.data(), values.size());
         }
     };
