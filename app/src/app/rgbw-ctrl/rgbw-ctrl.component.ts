@@ -137,6 +137,7 @@ export class RgbwCtrlComponent implements OnDestroy {
   initialized: boolean = false;
   loadingAlexa: boolean = false;
   loadingOtaCredentials = false;
+  readingAlexaColor = false;
 
   firmwareVersion: string | null = null;
   deviceName: string | null = null;
@@ -252,6 +253,10 @@ export class RgbwCtrlComponent implements OnDestroy {
     this.wifiScanStatus = WiFiScanStatus.NOT_STARTED;
     this.wifiStatus = WiFiStatus.UNKNOWN;
     this.wifiScanResult = [];
+
+    this.loadingAlexa = false;
+    this.loadingOtaCredentials = false;
+    this.readingAlexaColor = false;
 
     this.alexaIntegrationForm.reset();
   }
@@ -552,9 +557,11 @@ export class RgbwCtrlComponent implements OnDestroy {
     this.alexaIntegrationForm.reset(alexaDetails, {emitEvent: true});
   }
 
-  private async readAlexaColor() {
+  async readAlexaColor() {
+    this.readingAlexaColor = true;
     const view = await this.alexaColorCharacteristic!.readValue();
     this.alexaColorChanged(view);
+    this.readingAlexaColor = false;
   }
 
   private async sendWifiConfig(details: Uint8Array) {

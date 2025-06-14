@@ -364,8 +364,21 @@
   </mat-card-actions>
 </mat-card>
 <mat-card *ngIf="initialized">
+  <mat-card-header>
+    <mat-card-title>
+      <div>
+        <span>State</span>
+      </div>
+      <button mat-stroked-button matTooltip="Reload Alexa integration settings"
+              (click)="readAlexaColor()" [disabled]="readingAlexaColor || !connected" class="scan-button">
+        <mat-progress-spinner *ngIf="loadingAlexa" diameter="20" mode="indeterminate"
+                              color="accent"></mat-progress-spinner>
+        Reload
+      </button>
+    </mat-card-title>
+  </mat-card-header>
   <mat-card-content>
-    <mat-card appearance="outlined">
+    <mat-card appearance="outlined" style="margin-top: 0.5rem">
       <mat-card-content>
         <form style="grid-column: span 2; display: grid" [formGroup]="colorForm">
           <mat-slider class="red-slider" [min]="0" [max]="255" [step]="1">
