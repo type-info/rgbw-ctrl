@@ -7,7 +7,7 @@
 #include "push_button.hh"
 #include "ota_handler.hh"
 
-constexpr unsigned long BLE_TIMEOUT_MS = 5000;
+constexpr unsigned long BLE_TIMEOUT_MS = 15000;
 
 Output output;
 BoardLED boardLED;
@@ -25,13 +25,13 @@ void setup()
     boardLED.begin();
     output.begin(webServerHandler);
     wifiManager.begin();
-    bleManager.begin();
     otaHandler.begin(webServerHandler.getWebServer());
     webServerHandler.begin();
     wifiManager.setGotIpCallback([]()
     {
         alexaIntegration.begin(webServerHandler);
     });
+
     if (const auto credentials = WiFiManager::loadCredentials())
     {
         wifiManager.connect(credentials.value());
@@ -44,13 +44,37 @@ void setup()
 
     boardButton.setLongPressCallback([]()
     {
+        lastClientConnectedAt = millis();
         if (!bleManager.isInitialised())
-            bleManager.stop();
+            bleManager.start();
     });
 
     boardButton.setShortPressCallback([]()
     {
         output.toggleAll();
+    });
+
+    webServerHandler.on("/bluetooth", HTTP_GET, [](AsyncWebServerRequest* request)
+    {
+        auto state = request->getParam("state")->value() == "on";
+        asyncCall([state]()
+        {
+            if (state == true)
+            {
+                lastClientConnectedAt = millis();
+                if (!bleManager.isInitialised())
+                    bleManager.start();
+            }
+            else
+            {
+                if (bleManager.isInitialised())
+                    bleManager.stop();
+            }
+        }, 4096, 50);
+        if (state)
+            request->send(200, "text/plain", "Bluetooth enabled");
+        else
+            request->send(200, "text/plain", "Bluetooth disabled, device will restart");
     });
 }
 

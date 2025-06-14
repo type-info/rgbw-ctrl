@@ -71,31 +71,6 @@ public:
     {
     }
 
-    void begin()
-    {
-        webServerHandler.on("/bluetooth", HTTP_GET, [this](AsyncWebServerRequest* request)
-        {
-            auto state = request->getParam("state")->value() == "on" ? true : false;
-            asyncCall([this,state]()
-            {
-                if (state == true)
-                {
-                    if (!this->isInitialised())
-                        this->start();
-                }
-                else
-                {
-                    if (this->isInitialised())
-                        this->stop();
-                }
-            }, 4096, 50);
-            if (state)
-                request->send(200, "text/plain", "Bluetooth enabled");
-            else
-                request->send(200, "text/plain", "Bluetooth disabled, device will restart");
-        });
-    }
-
     void start()
     {
         wifiManager.setDetailsChangedCallback([this](WiFiDetails wiFiScanResult)
