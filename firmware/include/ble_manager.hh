@@ -110,6 +110,13 @@ public:
             deviceNameCharacteristic->notify();
         });
 
+        output.setOnChangeCallback([this](std::array<uint8_t, 4> output)
+        {
+            if (!alexaColorCharacteristic) return;
+            alexaColorCharacteristic->setValue(output.data(), output.size());
+            alexaColorCharacteristic->notify();
+        });
+
         setupBle();
         this->server->getAdvertising()->start();
         ESP_LOGI(LOG_TAG, "BLE advertising started with device name: %s", wifiManager.getDeviceName());
@@ -500,7 +507,8 @@ private:
                 return;
             }
             memcpy(values.data(), pCharacteristic->getValue().data(), values.size());
-            net->output.setValues(values);
+            net->output.setValues(values, false);
+            net->alexaIntegration.updateValues();
         }
 
         void onRead(BLECharacteristic* pCharacteristic) override

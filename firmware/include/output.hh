@@ -7,6 +7,7 @@
 #include <array>
 #include <Arduino.h>
 #include <algorithm>
+#include <functional>
 #include <webserver_handler.hh>
 
 class Output
@@ -18,7 +19,17 @@ class Output
         Light(static_cast<gpio_num_t>(static_cast<uint8_t>(Hardware::Pin::Output::WHITE)))
     };
 
+    std::function<void(std::array<uint8_t, 4>)> onChangeCallback;
+
     static_assert(static_cast<size_t>(Color::White) < 4, "Color enum out of bounds");
+
+    void notifyChange() const
+    {
+        if (onChangeCallback)
+        {
+            onChangeCallback(getValues());
+        }
+    }
 
 public:
     void begin(WebServerHandler& webServerHandler)
@@ -56,9 +67,15 @@ public:
         });
     }
 
-    void update(Color color, const uint8_t value)
+    void setOnChangeCallback(const std::function<void(std::array<uint8_t, 4>)>& callback)
+    {
+        onChangeCallback = callback;
+    }
+
+    void update(Color color, const uint8_t value, const bool notify = true)
     {
         lights.at(static_cast<size_t>(color)).setValue(value);
+        if (notify) notifyChange();
     }
 
     [[nodiscard]] bool getState(Color color) const
@@ -74,12 +91,14 @@ public:
     void toggle(Color color)
     {
         lights.at(static_cast<size_t>(color)).toggle();
+        notifyChange();
     }
 
     void updateAll(const uint8_t value)
     {
         for (auto& light : lights)
             light.setValue(value);
+        notifyChange();
     }
 
     void toggleAll()
@@ -93,30 +112,35 @@ public:
             else
                 light.setValue(Light::ON_VALUE);
         }
+        notifyChange();
     }
 
     void increaseBrightness()
     {
         for (auto& light : lights)
             light.increaseBrightness();
+        notifyChange();
     }
 
     void decreaseBrightness()
     {
         for (auto& light : lights)
             light.decreaseBrightness();
+        notifyChange();
     }
 
     void turnOff()
     {
         for (auto& light : lights)
             light.setState(false);
+        notifyChange();
     }
 
     void turnOn()
     {
         for (auto& light : lights)
             light.setValue(Light::ON_VALUE);
+        notifyChange();
     }
 
     void setColor(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t w = 0)
@@ -125,6 +149,7 @@ public:
         lights.at(static_cast<size_t>(Color::Green)).setValue(g);
         lights.at(static_cast<size_t>(Color::Blue)).setValue(b);
         lights.at(static_cast<size_t>(Color::White)).setValue(w);
+        notifyChange();
     }
 
     [[nodiscard]] std::array<uint8_t, 4> getValues() const
@@ -137,11 +162,11 @@ public:
         return output;
     }
 
-    void setValues(const std::array<uint8_t, 4>& array)
+    void setValues(const std::array<uint8_t, 4>& array, const bool notify = true)
     {
         for (size_t i = 0; i < std::min(lights.size(), array.size()); ++i)
         {
-            update(static_cast<Color>(i), array[i]);
+            update(static_cast<Color>(i), array[i], notify);
         }
     }
 };

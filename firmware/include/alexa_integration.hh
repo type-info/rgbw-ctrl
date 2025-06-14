@@ -81,6 +81,24 @@ public:
         savePreferences();
     }
 
+    void updateValues()
+    {
+        switch (settings.integrationMode)
+        {
+        case AlexaIntegrationMode::OFF:
+            break;
+        case AlexaIntegrationMode::RGBW_DEVICE:
+            updateRgbwDevice();
+            break;
+        case AlexaIntegrationMode::RGB_DEVICE:
+            updateRgbDevice();
+            break;
+        case AlexaIntegrationMode::MULTI_DEVICE:
+            updateMultiDevice();
+            break;
+        }
+    }
+
 private:
     void loadPreferences()
     {
@@ -170,14 +188,7 @@ private:
                     b -= w;
                     output.setColor(r, g, b, w);
                 }, 0);
-            devices[0]->setState(output.getState(Color::Red)
-                || output.getState(Color::Green)
-                || output.getState(Color::Blue)
-                || output.getState(Color::White));
-            devices[0]->setColor(output.getValue(Color::Red),
-                                 output.getValue(Color::Green),
-                                 output.getValue(Color::Blue));
-            devices[0]->setValue(output.getValue(Color::White));
+            updateRgbwDevice();
         }
         else
         {
@@ -245,15 +256,7 @@ private:
         devices[1] = addSingleChannelDevice(settings.gDeviceName, Color::Green);
         devices[2] = addSingleChannelDevice(settings.bDeviceName, Color::Blue);
         devices[3] = addSingleChannelDevice(settings.wDeviceName, Color::White);
-        for (size_t i = 0; i < devices.size(); ++i)
-        {
-            if (devices[i])
-            {
-                const auto color = static_cast<Color>(i);
-                devices[i]->setState(output.getState(color));
-                devices[i]->setValue(output.getValue(color));
-            }
-        }
+        updateMultiDevice();
     }
 
     [[nodiscard]] std::unique_ptr<EspalexaDevice> addSingleChannelDevice(const char* name, Color color) const
@@ -269,5 +272,51 @@ private:
             },
             0
         );
+    }
+
+    void updateRgbwDevice()
+    {
+        if (devices[0])
+        {
+            devices[0]->setState(output.getState(Color::Red)
+                || output.getState(Color::Green)
+                || output.getState(Color::Blue)
+                || output.getState(Color::White));
+            devices[0]->setColor(output.getValue(Color::Red),
+                                 output.getValue(Color::Green),
+                                 output.getValue(Color::Blue));
+            devices[0]->setValue(output.getValue(Color::White));
+        }
+    }
+
+    void updateRgbDevice()
+    {
+        if (devices[0])
+        {
+            devices[0]->setState(output.getState(Color::Red)
+                || output.getState(Color::Green)
+                || output.getState(Color::Blue));
+            devices[0]->setColor(output.getValue(Color::Red),
+                                 output.getValue(Color::Green),
+                                 output.getValue(Color::Blue));
+        }
+        if (devices[3])
+        {
+            devices[3]->setState(output.getState(Color::White));
+            devices[3]->setValue(output.getValue(Color::White));
+        }
+    }
+
+    void updateMultiDevice()
+    {
+        for (size_t i = 0; i < devices.size(); ++i)
+        {
+            if (devices[i])
+            {
+                const auto color = static_cast<Color>(i);
+                devices[i]->setState(output.getState(color));
+                devices[i]->setValue(output.getValue(color));
+            }
+        }
     }
 };
