@@ -46,7 +46,7 @@ public:
 
     void begin(WebServerHandler& webServerHandler)
     {
-        webServerHandler.getWebServer()->onNotFound([this](AsyncWebServerRequest* request)
+        webServerHandler.onNotFound([this](AsyncWebServerRequest* request)
         {
             if (!espalexa.handleAlexaApiCall(request))
             {

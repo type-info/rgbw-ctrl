@@ -28,8 +28,7 @@ public:
     {
         updateServerCredentials(getCredentials());
         webServer.addHandler(&ws);
-        webServer.addMiddleware(&basicAuth);
-        webServer.on("/restart", HTTP_GET, [](AsyncWebServerRequest* request)
+        this->on("/restart", HTTP_GET, [](AsyncWebServerRequest* request)
         {
             asyncCall([]()
             {
@@ -37,7 +36,7 @@ public:
             }, 1024, 300);
             request->send(200, "text/plain", "Restarting...");
         });
-        webServer.on("/reset", HTTP_GET, [](AsyncWebServerRequest* request)
+        this->on("/reset", HTTP_GET, [](AsyncWebServerRequest* request)
         {
             asyncCall([]()
             {
@@ -60,13 +59,27 @@ public:
         return &webServer;
     }
 
+    void onNotFound(ArRequestHandlerFunction fn)
+    {
+        webServer.onNotFound(std::move(fn));
+    }
+
+    AsyncCallbackWebHandler& on(const char* uri, ArRequestHandlerFunction onRequest)
+    {
+        auto& handler = webServer.on(uri, std::move(onRequest));
+        handler.addMiddleware(&basicAuth);
+        return handler;
+    }
+
     AsyncCallbackWebHandler& on(
         const char* uri, const WebRequestMethodComposite method, ArRequestHandlerFunction onRequest,
         ArUploadHandlerFunction onUpload = nullptr,
         ArBodyHandlerFunction onBody = nullptr
     )
     {
-        return webServer.on(uri, method, std::move(onRequest), std::move(onUpload), std::move(onBody));
+        auto& handler = webServer.on(uri, method, std::move(onRequest), std::move(onUpload), std::move(onBody));
+        handler.addMiddleware(&basicAuth);
+        return handler;
     }
 
     void updateCredentials(const HttpCredentials& credentials)
