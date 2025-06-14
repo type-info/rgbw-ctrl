@@ -107,3 +107,47 @@ mat-list-item.selected {
 mat-form-field {
   width: 100%;
 }
+
+.red-slider {
+  ::ng-deep .mdc-slider__track--active_fill {
+    border-color: red !important;
+  }
+
+  ::ng-deep .mdc-slider__thumb-knob {
+    background-color: red !important;
+    border-color: red !important;
+  }
+}
+
+.green-slider {
+  ::ng-deep .mdc-slider__track--active_fill {
+    border-color: green !important;
+  }
+
+  ::ng-deep .mdc-slider__thumb-knob {
+    background-color: green !important;
+    border-color: green !important;
+  }
+}
+
+.blue-slider {
+  ::ng-deep .mdc-slider__track--active_fill {
+    border-color: blue !important;
+  }
+
+  ::ng-deep .mdc-slider__thumb-knob {
+    background-color: blue !important;
+    border-color: blue !important;
+  }
+}
+
+.white-slider {
+  ::ng-deep .mdc-slider__track--active_fill {
+    border-color: #efe9c3 !important;
+  }
+
+  ::ng-deep .mdc-slider__thumb-knob {
+    background-color: #efe9c3 !important;
+    border-color: #efe9c3 !important;
+  }
+}

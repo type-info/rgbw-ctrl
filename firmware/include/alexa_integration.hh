@@ -81,6 +81,67 @@ public:
         savePreferences();
     }
 
+    [[nodiscard]] std::array<uint8_t, 4> getValues() const
+    {
+        std::array<uint8_t, 4> values = {};
+        for (size_t i = 0; i < devices.size(); ++i)
+        {
+            values[i] = output.getState(static_cast<Color>(i)) ? output.getValue(static_cast<Color>(i)) : 0;
+        }
+        return values;
+    }
+
+    void setValues(const std::array<uint8_t, 4>& array)
+    {
+        for (size_t i = 0; i < devices.size(); ++i)
+        {
+            output.update(static_cast<Color>(i), array[i]);
+        }
+        switch (settings.integrationMode)
+        {
+        case AlexaIntegrationMode::OFF:
+            break;
+        case AlexaIntegrationMode::RGBW_DEVICE:
+        case AlexaIntegrationMode::RGB_DEVICE:
+            if (devices[0])
+            {
+                devices[0]->setState(output.getState(Color::Red)
+                    || output.getState(Color::Green)
+                    || output.getState(Color::Blue));
+                devices[0]->setColor(output.getColor(Color::Red),
+                                     output.getColor(Color::Green),
+                                     output.getColor(Color::Blue));
+            }
+            if (devices[3])
+            {
+                devices[3]->setState(output.getState(Color::White));
+                devices[3]->setValue(output.getColor(Color::White));
+            }
+            break;
+        case AlexaIntegrationMode::MULTI_DEVICE:
+            if (devices[0])
+            {
+                devices[0]->setState(output.getState(Color::Red));
+                devices[0]->setValue(output.getColor(Color::Red));
+            }
+            if (devices[1])
+            {
+                devices[1]->setState(output.getState(Color::Green));
+                devices[1]->setValue(output.getColor(Color::Green));
+            }
+            if (devices[2])
+            {
+                devices[2]->setState(output.getState(Color::Blue));
+                devices[2]->setValue(output.getColor(Color::Blue));
+            }
+            if (devices[3])
+            {
+                devices[3]->setState(output.getState(Color::White));
+                devices[3]->setValue(output.getColor(Color::White));
+            }
+        }
+    }
+
 private:
     void loadPreferences()
     {

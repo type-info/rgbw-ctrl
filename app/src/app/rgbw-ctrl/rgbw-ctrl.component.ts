@@ -51,6 +51,7 @@ import {SimpleWiFiConnectDialogComponent} from './simple-wi-fi-connect-dialog/si
 import {CustomWiFiConnectDialogComponent} from './custom-wi-fi-connect-dialog/custom-wi-fi-connect-dialog.component';
 import {MAX_OTA_PASSWORD_LENGTH, MAX_OTA_USERNAME_LENGTH} from '../ota.model';
 import {KilobytesPipe} from '../kb.pipe';
+import {MatSliderModule} from '@angular/material/slider';
 
 const BLE_NAME = "rgbw-ctrl";
 
@@ -60,13 +61,16 @@ const DEVICE_NAME_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
 const FIRMWARE_VERSION_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
 const OTA_CREDENTIALS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
 const DEVICE_HEAP_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004";
+
 const WIFI_SERVICE = "12345678-1234-1234-1234-1234567890ab";
-const WIFI_DETAILS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0000";
-const WIFI_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
-const WIFI_SCAN_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
-const WIFI_SCAN_RESULT_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
+const WIFI_DETAILS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0005";
+const WIFI_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0006";
+const WIFI_SCAN_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0007";
+const WIFI_SCAN_RESULT_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0008";
+
 const ALEXA_SERVICE = "12345678-1234-1234-1234-1234567890ba";
-const ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
+const ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0009";
+const ALEXA_COLOR_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee000a";
 
 @Component({
   selector: 'app-rgbw-ctrl',
@@ -85,6 +89,7 @@ const ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
     MatButtonToggleModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
+    MatSliderModule,
     NumberToIpPipe,
     ReactiveFormsModule,
     MatChipsModule,
@@ -125,6 +130,7 @@ export class RgbwCtrlComponent implements OnDestroy {
 
   private alexaService: BluetoothRemoteGATTService | null = null;
   private alexaCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+  private alexaColorCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 
   initialized: boolean = false;
   loadingAlexa: boolean = false;
@@ -159,6 +165,21 @@ export class RgbwCtrlComponent implements OnDestroy {
     }),
   });
 
+  colorForm = new FormGroup({
+    r: new FormControl<number>(0, {
+      nonNullable: true
+    }),
+    g: new FormControl<number>(0, {
+      nonNullable: true
+    }),
+    b: new FormControl<number>(0, {
+      nonNullable: true
+    }),
+    w: new FormControl<number>(0, {
+      nonNullable: true
+    }),
+  });
+
   otaCredentialsForm = new FormGroup({
     username: new FormControl<string>('', {
       nonNullable: true,
@@ -182,6 +203,17 @@ export class RgbwCtrlComponent implements OnDestroy {
     private matDialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
+    this.colorForm.valueChanges.subscribe(value => {
+      if (this.alexaColorCharacteristic) {
+        const color = new Uint8Array(4);
+        color[0] = value.r ?? 0;
+        color[1] = value.g ?? 0;
+        color[2] = value.b ?? 0;
+        color[3] = value.w ?? 0;
+        this.alexaColorCharacteristic.writeValue(color)
+          .catch(console.error);
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -207,6 +239,7 @@ export class RgbwCtrlComponent implements OnDestroy {
 
     this.alexaService = null;
     this.alexaCharacteristic = null;
+    this.alexaColorCharacteristic = null;
 
     // Clear local UI state
     this.deviceName = null;
@@ -251,6 +284,7 @@ export class RgbwCtrlComponent implements OnDestroy {
       await this.readWiFiScanStatus();
       await this.readWiFiScanResult();
       await this.readAlexaIntegration();
+      await this.readAlexaColor();
       this.snackBar.open('Device connected', 'Close', {duration: 3000});
       this.initialized = true;
       if (this.wifiScanResult.length === 0) {
@@ -416,6 +450,9 @@ export class RgbwCtrlComponent implements OnDestroy {
   private async initBleAlexaIntegrationServices(server: BluetoothRemoteGATTServer) {
     this.alexaService = await server.getPrimaryService(ALEXA_SERVICE);
     this.alexaCharacteristic = await this.alexaService.getCharacteristic(ALEXA_CHARACTERISTIC);
+    this.alexaColorCharacteristic = await this.alexaService.getCharacteristic(ALEXA_COLOR_CHARACTERISTIC);
+    this.alexaColorCharacteristic.addEventListener('characteristicvaluechanged', (ev: any) => this.alexaColorChanged(ev.target.value));
+    await this.alexaColorCharacteristic.startNotifications();
   }
 
   private wifiStatusChanged(view: DataView) {
@@ -447,6 +484,17 @@ export class RgbwCtrlComponent implements OnDestroy {
 
   private deviceHeapChanged(view: DataView) {
     this.deviceHeap = view.getUint32(0, true);
+  }
+
+  private alexaColorChanged(view: DataView) {
+    const buffer = new Uint8Array(view.buffer);
+    const color = {
+      r: buffer[0],
+      g: buffer[1],
+      b: buffer[2],
+      w: buffer[3]
+    };
+    this.colorForm.setValue(color, {emitEvent: false});
   }
 
   private otaCredentialsChanged(view: DataView) {
@@ -494,6 +542,11 @@ export class RgbwCtrlComponent implements OnDestroy {
     const alexaDetails = decodeAlexaIntegrationSettings(new Uint8Array(view.buffer));
     this.resetAlexaIntegrationForm(alexaDetails.integrationMode);
     this.alexaIntegrationForm.reset(alexaDetails, {emitEvent: true});
+  }
+
+  private async readAlexaColor() {
+    const view = await this.alexaColorCharacteristic!.readValue();
+    this.alexaColorChanged(view);
   }
 
   private async sendWifiConfig(details: Uint8Array) {

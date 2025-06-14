@@ -27,13 +27,14 @@ class BleManager
         static constexpr auto DEVICE_HEAP_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004";
 
         static constexpr auto WIFI_SERVICE = "12345678-1234-1234-1234-1234567890ab";
-        static constexpr auto WIFI_DETAILS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0000";
-        static constexpr auto WIFI_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
-        static constexpr auto WIFI_SCAN_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
-        static constexpr auto WIFI_SCAN_RESULT_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
+        static constexpr auto WIFI_DETAILS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0005";
+        static constexpr auto WIFI_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0006";
+        static constexpr auto WIFI_SCAN_STATUS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0007";
+        static constexpr auto WIFI_SCAN_RESULT_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0008";
 
         static constexpr auto ALEXA_SERVICE = "12345678-1234-1234-1234-1234567890ba";
-        static constexpr auto ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
+        static constexpr auto ALEXA_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0009";
+        static constexpr auto ALEXA_COLOR_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee000a";
     };
 
     static constexpr auto LOG_TAG = "Network";
@@ -59,6 +60,7 @@ class BleManager
 
     BLEService* alexaService = nullptr;
     BLECharacteristic* alexaCharacteristic = nullptr;
+    BLECharacteristic* alexaColorCharacteristic = nullptr;
 
 public:
     explicit BleManager(WiFiManager& wifiManager, AlexaIntegration& alexaIntegration, OtaHandler& otaHandler)
@@ -126,6 +128,7 @@ public:
 
     void end() const
     {
+        if (server == nullptr) return;
         server->getAdvertising()->stop();
         if (this->isClientConnected())
         {
@@ -245,6 +248,13 @@ private:
             BLE_UUID::ALEXA_CHARACTERISTIC,
             BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE,
             new AlexaCallback(this)
+        );
+
+        alexaColorCharacteristic = createCharacteristic(
+            alexaService,
+            BLE_UUID::ALEXA_COLOR_CHARACTERISTIC,
+            BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY,
+            new AlexaColorCallback(this)
         );
 
         alexaService->start();
@@ -466,6 +476,34 @@ private:
         {
             auto settings = net->alexaIntegration.getSettings();
             pCharacteristic->setValue(reinterpret_cast<uint8_t*>(&settings), sizeof(AlexaIntegrationSettings));
+        }
+    };
+
+    class AlexaColorCallback final : public BLECharacteristicCallbacks
+    {
+        BleManager* net;
+
+    public:
+        explicit AlexaColorCallback(BleManager* net): net(net)
+        {
+        }
+
+        void onWrite(BLECharacteristic* pCharacteristic) override
+        {
+            std::array<uint8_t, 4> values = {};
+            if (pCharacteristic->getValue().size() != values.size())
+            {
+                ESP_LOGE(LOG_TAG, "Received invalid Alexa color values length: %d", pCharacteristic->getValue().size());
+                return;
+            }
+            memcpy(values.data(), pCharacteristic->getValue().data(), values.size());
+            net->alexaIntegration.setValues(values);
+        }
+
+        void onRead(BLECharacteristic* pCharacteristic) override
+        {
+            auto values = net->alexaIntegration.getValues();
+            pCharacteristic->setValue(values.data(), values.size());
         }
     };
 
