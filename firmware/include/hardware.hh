@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <array>
-#include <unordered_map>
+#include <optional>
 
 namespace Hardware
 {
@@ -71,12 +71,18 @@ namespace Hardware
             static_cast<uint8_t>(BoardLed::BLUE)};
     }
 
-    static std::unordered_map<uint8_t, uint8_t> PWM_CHANNELS = {
-        {static_cast<uint8_t>(Pin::BoardLed::RED), 0},
-        {static_cast<uint8_t>(Pin::BoardLed::GREEN), 1},
-        {static_cast<uint8_t>(Pin::BoardLed::BLUE), 2},
-        {static_cast<uint8_t>(Pin::Output::RED), 3},
-        {static_cast<uint8_t>(Pin::Output::GREEN), 4},
-        {static_cast<uint8_t>(Pin::Output::BLUE), 5},
-        {static_cast<uint8_t>(Pin::Output::WHITE), 6}};
+    inline std::optional<uint8_t> getPwmChannel(const uint8_t pin)
+    {
+        switch (pin)
+        {
+            case static_cast<uint8_t>(Pin::BoardLed::RED): return 0;
+            case static_cast<uint8_t>(Pin::BoardLed::GREEN): return 1;
+            case static_cast<uint8_t>(Pin::BoardLed::BLUE): return 2;
+            case static_cast<uint8_t>(Pin::Output::RED): return 3;
+            case static_cast<uint8_t>(Pin::Output::GREEN): return 4;
+            case static_cast<uint8_t>(Pin::Output::BLUE): return 5;
+            case static_cast<uint8_t>(Pin::Output::WHITE): return 6;
+            default: return std::nullopt;
+        }
+    }
 }

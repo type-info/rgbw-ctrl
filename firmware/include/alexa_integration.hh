@@ -192,10 +192,10 @@ private:
                 || output.getState(Color::Green)
                 || output.getState(Color::Blue)
                 || output.getState(Color::White));
-            devices[0]->setColor(output.getColor(Color::Red),
-                                 output.getColor(Color::Green),
-                                 output.getColor(Color::Blue));
-            devices[0]->setValue(output.getColor(Color::White));
+            devices[0]->setColor(output.getValue(Color::Red),
+                                 output.getValue(Color::Green),
+                                 output.getValue(Color::Blue));
+            devices[0]->setValue(output.getValue(Color::White));
         }
         else
         {
@@ -233,9 +233,9 @@ private:
             devices[0]->setState(output.getState(Color::Red)
                 || output.getState(Color::Green)
                 || output.getState(Color::Blue));
-            devices[0]->setColor(output.getColor(Color::Red),
-                                 output.getColor(Color::Green),
-                                 output.getColor(Color::Blue));
+            devices[0]->setColor(output.getValue(Color::Red),
+                                 output.getValue(Color::Green),
+                                 output.getValue(Color::Blue));
         }
         else
         {
@@ -248,7 +248,7 @@ private:
             if (devices[3])
             {
                 devices[3]->setState(output.getState(Color::White));
-                devices[3]->setValue(output.getColor(Color::White));
+                devices[3]->setValue(output.getValue(Color::White));
             }
         }
         else
@@ -269,7 +269,7 @@ private:
             {
                 const auto color = static_cast<Color>(i);
                 devices[i]->setState(output.getState(color));
-                devices[i]->setValue(output.getColor(color));
+                devices[i]->setValue(output.getValue(color));
             }
         }
     }

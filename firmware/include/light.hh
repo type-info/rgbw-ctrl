@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <cmath>
+#include <cstdlib>
 #include "hardware.hh"
 
 class Light
@@ -19,22 +21,22 @@ private:
     uint8_t value;
     gpio_num_t pin;
 
-    char valueKey[5]{};
-    char stateKey[5]{};
+    char valueKey[5] = "";
+    char stateKey[5] = "";
 
-    mutable std::optional<uint8_t> lastWrittenValue = std::nullopt;
-    mutable bool lastPersistedState = false;
-    mutable uint8_t lastPersistedValue = 255;
+    std::optional<uint8_t> lastWrittenValue = std::nullopt;
+    bool lastPersistedState = false;
+    uint8_t lastPersistedValue = 255;
 
-    void update() const
+    void update()
     {
-        const auto& channel = Hardware::PWM_CHANNELS.at(this->pin);
+        const auto& channel = Hardware::getPwmChannel(this->pin);
         const auto duty = this->state ? this->value : OFF_VALUE;
-        uint8_t outputValue = invert ? ON_VALUE - duty : duty;
 
-        if (!lastWrittenValue  || outputValue != lastWrittenValue)
+        if (uint8_t outputValue = invert ? ON_VALUE - duty : duty;
+            !lastWrittenValue || outputValue != lastWrittenValue)
         {
-            ledcWrite(channel, outputValue);
+            ledcWrite(channel.value(), outputValue);
             lastWrittenValue = outputValue;
         }
 
@@ -67,6 +69,15 @@ private:
         update();
     }
 
+    static uint8_t perceptualBrightnessStep(const uint8_t currentValue, const bool increase)
+    {
+        constexpr float gamma = 2.2f;
+        float linear = pow(static_cast<float>(currentValue) / 255.0f, 1.0f / gamma);
+        linear += (increase ? 0.05f : -0.05f);
+        linear = std::clamp(linear, 0.0f, 1.0f);
+        return static_cast<uint8_t>(lround(pow(linear, gamma) * 255.0f));
+    }
+
 public:
     explicit Light(const gpio_num_t pin, const bool invert = false) :
         invert(invert), state(false), value(OFF_VALUE), pin(pin)
@@ -77,11 +88,17 @@ public:
 
     void setup()
     {
-        const auto& channel = Hardware::PWM_CHANNELS.at(pin);
-        pinMode(pin, OUTPUT);
-        ledcSetup(channel, PWM_FREQUENCY, PWM_RESOLUTION);
-        ledcAttachPin(pin, channel);
-        restore();
+        if (const auto& channel = Hardware::getPwmChannel(pin))
+        {
+            pinMode(pin, OUTPUT);
+            ledcSetup(channel.value(), PWM_FREQUENCY, PWM_RESOLUTION);
+            ledcAttachPin(pin, channel.value());
+            restore();
+        }
+        else
+        {
+            ESP_LOGE("Light", "Invalid pin %d for PWM channel", static_cast<int>(pin));
+        }
     }
 
     void toggle()
@@ -94,14 +111,14 @@ public:
         this->update();
     }
 
-    void toggle(uint8_t value)
+    void toggle(const uint8_t value)
     {
         this->value = value;
         this->state = value > 0;
         this->update();
     }
 
-    void setValue(uint8_t value)
+    void setValue(const uint8_t value)
     {
         this->value = value;
         if (value > OFF_VALUE && !this->state)
@@ -130,14 +147,14 @@ public:
 
     void increaseBrightness()
     {
-        this->value = this->value < ON_VALUE - 10 ? this->value + 10 : ON_VALUE;
+        this->value = perceptualBrightnessStep(this->value, true);
         this->state = true;
         this->update();
     }
 
     void decreaseBrightness()
     {
-        this->value = this->value > 10 ? this->value - 10 : OFF_VALUE;
+        this->value = perceptualBrightnessStep(this->value, false);
         if (this->value == OFF_VALUE)
             this->state = false;
         this->update();
