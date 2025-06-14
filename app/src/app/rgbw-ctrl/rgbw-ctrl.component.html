@@ -381,16 +381,16 @@
     <mat-card appearance="outlined" style="margin-top: 0.5rem">
       <mat-card-content>
         <form style="grid-column: span 2; display: grid" [formGroup]="colorForm">
-          <mat-slider class="red-slider" [min]="0" [max]="255" [step]="1">
+          <mat-slider class="red-slider">
             <input matSliderThumb formControlName="r">
           </mat-slider>
-          <mat-slider class="green-slider" [min]="0" [max]="255" [step]="1">
+          <mat-slider class="green-slider">
             <input matSliderThumb formControlName="g">
           </mat-slider>
-          <mat-slider class="blue-slider" [min]="0" [max]="255" [step]="1">
+          <mat-slider class="blue-slider">
             <input matSliderThumb formControlName="b">
           </mat-slider>
-          <mat-slider class="white-slider" [min]="0" [max]="255" [step]="1">
+          <mat-slider class="white-slider">
             <input matSliderThumb formControlName="w">
           </mat-slider>
         </form>

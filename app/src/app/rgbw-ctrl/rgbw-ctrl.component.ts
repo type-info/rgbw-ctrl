@@ -41,7 +41,7 @@ import {LoadingComponent} from '../loading/loading.component';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {EditDeviceNameComponentDialog} from './edit-device-name-dialog/edit-device-name-component-dialog.component';
-import {debounceTime, firstValueFrom, Subscription} from 'rxjs';
+import {asyncScheduler, firstValueFrom, Subscription, throttleTime} from 'rxjs';
 import {ALEXA_MAX_DEVICE_NAME_LENGTH, AlexaIntegrationMode} from '../alexa-integration-settings.model';
 import {MatChipsModule} from '@angular/material/chips';
 import {
@@ -206,18 +206,28 @@ export class RgbwCtrlComponent implements OnDestroy {
     private matDialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
-    this.colorSubscription = this.colorForm.valueChanges.pipe(debounceTime(100))
-      .subscribe(value => {
-        if (this.alexaColorCharacteristic) {
-          const color = new Uint8Array(4);
-          color[0] = value.r ?? 0;
-          color[1] = value.g ?? 0;
-          color[2] = value.b ?? 0;
-          color[3] = value.w ?? 0;
-          this.alexaColorCharacteristic.writeValue(color)
-            .catch(console.error);
-        }
-      });
+    const perceptualMap = (v: number): number => {
+      const normalized = Math.min(Math.max(v / 100, 0), 1);
+      return Math.round(Math.pow(Math.sin(normalized * (Math.PI / 2)), 2) * 255);
+    };
+
+    this.colorSubscription = this.colorForm.valueChanges.pipe(
+      throttleTime(200, asyncScheduler, {
+        leading: true,
+        trailing: true
+      })
+    ).subscribe(value => {
+      if (this.alexaColorCharacteristic) {
+        const color = new Uint8Array(4);
+        color[0] = perceptualMap(value.r ?? 0);
+        color[1] = perceptualMap(value.g ?? 0);
+        color[2] = perceptualMap(value.b ?? 0);
+        color[3] = perceptualMap(value.w ?? 0);
+        this.alexaColorCharacteristic.writeValue(color)
+          .catch(console.error);
+      }
+    });
+
   }
 
   ngOnDestroy() {
@@ -501,13 +511,19 @@ export class RgbwCtrlComponent implements OnDestroy {
 
   private alexaColorChanged(view: DataView) {
     const buffer = new Uint8Array(view.buffer);
-    const color = {
-      r: buffer[0],
-      g: buffer[1],
-      b: buffer[2],
-      w: buffer[3]
+    const inversePerceptualMap = (pwm: number): number => {
+      if (pwm <= 0) return 0;
+      if (pwm >= 255) return 100;
+      const normalized = (2 / Math.PI) * Math.asin(Math.sqrt(pwm / 255));
+      return Math.round(normalized * 100);
     };
-    this.colorForm.setValue(color, {emitEvent: false});
+
+    this.colorForm.setValue({
+      r: inversePerceptualMap(buffer[0]),
+      g: inversePerceptualMap(buffer[1]),
+      b: inversePerceptualMap(buffer[2]),
+      w: inversePerceptualMap(buffer[3]),
+    }, {emitEvent: false});
   }
 
   private otaCredentialsChanged(view: DataView) {
