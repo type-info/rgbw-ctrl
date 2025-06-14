@@ -13,7 +13,12 @@ struct OutputState
 {
     std::array<bool, 4> states;
     std::array<uint8_t, 4> values;
-    bool operator==(const OutputState& output_state) const = default;
+
+    bool operator==(const OutputState& output_state) const
+    {
+        return std::equal(states.begin(), states.end(), output_state.states.begin())
+            && std::equal(values.begin(), values.end(), output_state.values.begin());
+    }
 };
 
 class Output

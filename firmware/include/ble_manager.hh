@@ -68,7 +68,7 @@ public:
     {
     }
 
-    void begin()
+    void start()
     {
         wifiManager.setDetailsChangedCallback([this](WiFiDetails wiFiScanResult)
         {
@@ -126,7 +126,7 @@ public:
         }
     }
 
-    void end() const
+    void stop() const
     {
         if (server == nullptr) return;
         server->getAdvertising()->stop();

@@ -6,6 +6,8 @@
 #include "output.hh"
 #include "push_button.hh"
 
+constexpr unsigned long BLE_TIMEOUT_MS = 5000;
+
 Output output;
 BoardLED boardLED;
 OtaHandler otaHandler;
@@ -19,13 +21,73 @@ BleManager bleManager(wifiManager, alexaIntegration, otaHandler);
 
 unsigned long lastClientConnectedAt = 0;
 
+void setupWebServer()
+{
+    webServer.addHandler(&ws);
+    webServer.on("/bluetooth", HTTP_GET, [](AsyncWebServerRequest* request)
+    {
+        auto state = request->getParam("state")->value() == "on" ? true : false;
+        asyncCall([state]()
+        {
+            if (state == true)
+            {
+                lastClientConnectedAt = 0;
+                bleManager.start();
+            }
+            else
+            {
+                if (bleManager.isInitialised())
+                    bleManager.stop();
+            }
+        }, 4096, 50);
+        request->send(200, "text/plain", "Bluetooth enabled");
+    });
+    webServer.on("/restart", HTTP_GET, [](AsyncWebServerRequest* request)
+    {
+        asyncCall([]()
+        {
+            esp_restart();
+        }, 1024, 300);
+        request->send(200, "text/plain", "Restarting...");
+    });
+    webServer.on("/color", HTTP_GET, [](AsyncWebServerRequest* request)
+    {
+        if (request->hasParam("r") && request->hasParam("g") && request->hasParam("b"))
+        {
+            auto r = output.getValue(Color::Red);
+
+            if (request->hasParam("r"))
+            {
+                r = request->getParam("r")->value().toInt();
+            }
+            auto g = output.getValue(Color::Green);
+            if (request->hasParam("g"))
+            {
+                g = request->getParam("g")->value().toInt();
+            }
+            auto b = output.getValue(Color::Blue);
+            if (request->hasParam("b"))
+            {
+                b = request->getParam("b")->value().toInt();
+            }
+            auto w = output.getValue(Color::White);
+            if (request->hasParam("w"))
+            {
+                w = request->getParam("w")->value().toInt();
+            }
+            output.setColor(r, g, b, w);
+        }
+        request->send(200, "text/plain", "Color set");
+    });
+}
+
 void setup()
 {
     boardLED.begin();
     output.begin();
     wifiManager.begin();
     otaHandler.begin(&webServer);
-    webServer.addHandler(&ws);
+    setupWebServer();
     // Can't call webServer.begin()
     // because alexaIntegration does it
     wifiManager.setGotIpCallback([]()
@@ -39,13 +101,13 @@ void setup()
     }
     else
     {
-        bleManager.begin();
+        bleManager.start();
     }
 
     boardButton.setLongPressCallback([]()
     {
         if (!bleManager.isInitialised())
-            bleManager.begin();
+            bleManager.stop();
     });
 
     boardButton.setShortPressCallback([]()
@@ -56,7 +118,7 @@ void setup()
 
 void loop()
 {
-    const unsigned long now = millis();
+    const auto now = millis();
 
     boardButton.handle(now);
     alexaIntegration.handle();
@@ -74,9 +136,9 @@ void loop()
     {
         lastClientConnectedAt = now;
     }
-    if (lastClientConnectedAt != 0 && now - lastClientConnectedAt > 5000)
+    if (lastClientConnectedAt != 0 && now - lastClientConnectedAt > BLE_TIMEOUT_MS)
     {
         // this will restart esp, since there's no way to restart ble
-        bleManager.end();
+        bleManager.stop();
     }
 }
