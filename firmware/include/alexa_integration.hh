@@ -53,6 +53,10 @@ public:
                 request->send(404, "text/plain", "Not found");
             }
         });
+        output.setOnChangeCallback([this](const OutputState& state)
+        {
+            this->updateEspalexaDevices(state);
+        });
         loadPreferences();
         setupDevices();
         for (const auto& device : devices)
@@ -96,49 +100,6 @@ public:
         for (size_t i = 0; i < devices.size(); ++i)
         {
             output.update(static_cast<Color>(i), array[i]);
-        }
-        switch (settings.integrationMode)
-        {
-        case AlexaIntegrationMode::OFF:
-            break;
-        case AlexaIntegrationMode::RGBW_DEVICE:
-        case AlexaIntegrationMode::RGB_DEVICE:
-            if (devices[0])
-            {
-                devices[0]->setState(output.getState(Color::Red)
-                    || output.getState(Color::Green)
-                    || output.getState(Color::Blue));
-                devices[0]->setColor(output.getColor(Color::Red),
-                                     output.getColor(Color::Green),
-                                     output.getColor(Color::Blue));
-            }
-            if (devices[3])
-            {
-                devices[3]->setState(output.getState(Color::White));
-                devices[3]->setValue(output.getColor(Color::White));
-            }
-            break;
-        case AlexaIntegrationMode::MULTI_DEVICE:
-            if (devices[0])
-            {
-                devices[0]->setState(output.getState(Color::Red));
-                devices[0]->setValue(output.getColor(Color::Red));
-            }
-            if (devices[1])
-            {
-                devices[1]->setState(output.getState(Color::Green));
-                devices[1]->setValue(output.getColor(Color::Green));
-            }
-            if (devices[2])
-            {
-                devices[2]->setState(output.getState(Color::Blue));
-                devices[2]->setValue(output.getColor(Color::Blue));
-            }
-            if (devices[3])
-            {
-                devices[3]->setState(output.getState(Color::White));
-                devices[3]->setValue(output.getColor(Color::White));
-            }
         }
     }
 
@@ -214,26 +175,23 @@ private:
         if (settings.rDeviceName[0] != '\0')
         {
             ESP_LOGI("AlexaIntegration", "Adding RGBW device: %s", settings.rDeviceName);
-            devices[0] = std::make_unique<EspalexaDevice>(settings.rDeviceName,
-                                                          [this](const uint8_t brightness, const uint32_t color)
-                                                          {
-                                                              uint8_t r = (color >> 16) & 0xFF;
-                                                              uint8_t g = (color >> 8) & 0xFF;
-                                                              uint8_t b = color & 0xFF;
-                                                              const float intensity = static_cast<float>(brightness) /
-                                                                  255.0f;
-                                                              r = static_cast<uint8_t>(static_cast<float>(r) *
-                                                                  intensity);
-                                                              g = static_cast<uint8_t>(static_cast<float>(g) *
-                                                                  intensity);
-                                                              b = static_cast<uint8_t>(static_cast<float>(b) *
-                                                                  intensity);
-                                                              const uint8_t w = std::min({r, g, b});
-                                                              r -= w;
-                                                              g -= w;
-                                                              b -= w;
-                                                              output.setColor(r, g, b, w);
-                                                          }, 0);
+            devices[0] = std::make_unique<EspalexaDevice>(
+                settings.rDeviceName,
+                [this](const uint8_t brightness, const uint32_t color)
+                {
+                    uint8_t r = (color >> 16) & 0xFF;
+                    uint8_t g = (color >> 8) & 0xFF;
+                    uint8_t b = color & 0xFF;
+                    const float intensity = static_cast<float>(brightness) / 255.0f;
+                    r = static_cast<uint8_t>(static_cast<float>(r) * intensity);
+                    g = static_cast<uint8_t>(static_cast<float>(g) * intensity);
+                    b = static_cast<uint8_t>(static_cast<float>(b) * intensity);
+                    const uint8_t w = std::min({r, g, b});
+                    r -= w;
+                    g -= w;
+                    b -= w;
+                    output.setColor(r, g, b, w);
+                }, 0);
             devices[0]->setState(output.getState(Color::Red)
                 || output.getState(Color::Green)
                 || output.getState(Color::Blue)
@@ -257,28 +215,25 @@ private:
         if (settings.rDeviceName[0] != '\0')
         {
             ESP_LOGI("AlexaIntegration", "Adding RGB device: %s", settings.rDeviceName);
-            devices[0] = std::make_unique<EspalexaDevice>(settings.rDeviceName,
-                                                          [&](const uint8_t brightness, const uint32_t color)
-                                                          {
-                                                              ESP_LOGI("AlexaIntegration",
-                                                                       "Received %s command: brightness=%d, color=0x%06X",
-                                                                       settings.rDeviceName,
-                                                                       brightness, color);
-                                                              uint8_t r = (color >> 16) & 0xFF;
-                                                              uint8_t g = (color >> 8) & 0xFF;
-                                                              uint8_t b = color & 0xFF;
-                                                              const float intensity = static_cast<float>(brightness) /
-                                                                  255.0f;
-                                                              r = static_cast<uint8_t>(static_cast<float>(r) *
-                                                                  intensity);
-                                                              g = static_cast<uint8_t>(static_cast<float>(g) *
-                                                                  intensity);
-                                                              b = static_cast<uint8_t>(static_cast<float>(b) *
-                                                                  intensity);
-                                                              output.update(Color::Red, r);
-                                                              output.update(Color::Green, g);
-                                                              output.update(Color::Blue, b);
-                                                          }, 0);
+            devices[0] = std::make_unique<EspalexaDevice>(
+                settings.rDeviceName,
+                [&](const uint8_t brightness, const uint32_t color)
+                {
+                    ESP_LOGI("AlexaIntegration",
+                             "Received %s command: brightness=%d, color=0x%06X",
+                             settings.rDeviceName,
+                             brightness, color);
+                    uint8_t r = (color >> 16) & 0xFF;
+                    uint8_t g = (color >> 8) & 0xFF;
+                    uint8_t b = color & 0xFF;
+                    const float intensity = static_cast<float>(brightness) / 255.0f;
+                    r = static_cast<uint8_t>(static_cast<float>(r) * intensity);
+                    g = static_cast<uint8_t>(static_cast<float>(g) * intensity);
+                    b = static_cast<uint8_t>(static_cast<float>(b) * intensity);
+                    output.update(Color::Red, r);
+                    output.update(Color::Green, g);
+                    output.update(Color::Blue, b);
+                }, 0);
             devices[0]->setState(output.getState(Color::Red)
                 || output.getState(Color::Green)
                 || output.getState(Color::Blue));
@@ -336,5 +291,65 @@ private:
             },
             0
         );
+    }
+
+    void updateEspalexaDevices(const OutputState& state)
+    {
+        switch (settings.integrationMode)
+        {
+        case AlexaIntegrationMode::OFF:
+            break;
+        case AlexaIntegrationMode::RGBW_DEVICE:
+            updateEspalexaRGBWDevices(state);
+            break;
+        case AlexaIntegrationMode::RGB_DEVICE:
+            updateEspalexaRGBDevices(state);
+            break;
+        case AlexaIntegrationMode::MULTI_DEVICE:
+            updateEspalexaMultiDevices(state);
+            break;
+        }
+    }
+
+    void updateEspalexaRGBWDevices(const OutputState& state)
+    {
+        if (devices[0])
+        {
+            const uint8_t r = state.values[0];
+            const uint8_t g = state.values[1];
+            const uint8_t b = state.values[2];
+
+            const uint8_t brightness = std::max({r, g, b});
+
+            devices[0]->setColor(r, g, b);
+            devices[0]->setValue(brightness);
+            devices[0]->setState(state.states[0] || state.states[1] || state.states[2] || state.states[3]);
+        }
+    }
+
+    void updateEspalexaRGBDevices(const OutputState& state)
+    {
+        if (devices[0])
+        {
+            devices[0]->setColor(state.values[0], state.values[1], state.values[2]);
+            devices[0]->setState(state.states[0] || state.states[1] || state.states[2]);
+        }
+        if (devices[3])
+        {
+            devices[3]->setValue(state.values[3]);
+            devices[3]->setState(state.states[3]);
+        }
+    }
+
+    void updateEspalexaMultiDevices(const OutputState& state)
+    {
+        for (size_t i = 0; i < devices.size(); ++i)
+        {
+            if (devices[i])
+            {
+                devices[i]->setValue(state.values[i]);
+                devices[i]->setState(state.states[i]);
+            }
+        }
     }
 };
