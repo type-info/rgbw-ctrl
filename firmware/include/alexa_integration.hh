@@ -53,10 +53,6 @@ public:
                 request->send(404, "text/plain", "Not found");
             }
         });
-        output.setOnChangeCallback([this](const OutputState& state)
-        {
-            this->updateEspalexaDevices(state);
-        });
         loadPreferences();
         setupDevices();
         for (const auto& device : devices)
@@ -291,65 +287,5 @@ private:
             },
             0
         );
-    }
-
-    void updateEspalexaDevices(const OutputState& state)
-    {
-        switch (settings.integrationMode)
-        {
-        case AlexaIntegrationMode::OFF:
-            break;
-        case AlexaIntegrationMode::RGBW_DEVICE:
-            updateEspalexaRGBWDevices(state);
-            break;
-        case AlexaIntegrationMode::RGB_DEVICE:
-            updateEspalexaRGBDevices(state);
-            break;
-        case AlexaIntegrationMode::MULTI_DEVICE:
-            updateEspalexaMultiDevices(state);
-            break;
-        }
-    }
-
-    void updateEspalexaRGBWDevices(const OutputState& state)
-    {
-        if (devices[0])
-        {
-            const uint8_t r = state.values[0];
-            const uint8_t g = state.values[1];
-            const uint8_t b = state.values[2];
-
-            const uint8_t brightness = std::max({r, g, b});
-
-            devices[0]->setColor(r, g, b);
-            devices[0]->setValue(brightness);
-            devices[0]->setState(state.states[0] || state.states[1] || state.states[2] || state.states[3]);
-        }
-    }
-
-    void updateEspalexaRGBDevices(const OutputState& state)
-    {
-        if (devices[0])
-        {
-            devices[0]->setColor(state.values[0], state.values[1], state.values[2]);
-            devices[0]->setState(state.states[0] || state.states[1] || state.states[2]);
-        }
-        if (devices[3])
-        {
-            devices[3]->setValue(state.values[3]);
-            devices[3]->setState(state.states[3]);
-        }
-    }
-
-    void updateEspalexaMultiDevices(const OutputState& state)
-    {
-        for (size_t i = 0; i < devices.size(); ++i)
-        {
-            if (devices[i])
-            {
-                devices[i]->setValue(state.values[i]);
-                devices[i]->setState(state.states[i]);
-            }
-        }
     }
 };
