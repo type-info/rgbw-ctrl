@@ -11,7 +11,7 @@ public:
     static constexpr uint8_t OFF_VALUE = 0;
 
 private:
-    static constexpr uint32_t PWM_FREQUENCY = 5000;
+    static constexpr uint32_t PWM_FREQUENCY = 25000;
     static constexpr uint8_t PWM_RESOLUTION = 8;
 
     bool invert;

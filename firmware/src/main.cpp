@@ -35,6 +35,7 @@ void setup()
     if (const auto credentials = WiFiManager::loadCredentials())
     {
         wifiManager.connect(credentials.value());
+        lastClientConnectedAt = millis();
     }
     else
     {

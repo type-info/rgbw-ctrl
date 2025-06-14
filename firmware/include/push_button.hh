@@ -11,55 +11,71 @@ class PushButton
     gpio_num_t pin = static_cast<gpio_num_t>(static_cast<uint8_t>(Hardware::Pin::Button::BUTTON1));
 
     unsigned long lastDown = 0;
+    unsigned long lastChange = 0;
     bool lastState = HIGH;
     bool longPressHandled = false;
-    unsigned long longPressThreshold = 2000; // 2 seconds
+    unsigned long longPressThresholdMs = 2500;
+    unsigned long debounceDelayMs = 50;
+
     std::function<void()> longPressCallback;
     std::function<void()> shortPressCallback;
 
+    static void maybeInvoke(const std::function<void()>& cb)
+    {
+        if (cb) cb();
+    }
+
 public:
-    void setLongPressCallback(const std::function<void()>& callback)
-    {
-        longPressCallback = std::move(callback);
-    }
-
-    void setShortPressCallback(const std::function<void()>& callback)
-    {
-        shortPressCallback = std::move(callback);
-    }
-
-    explicit PushButton(const unsigned long longPressThreshold = 2000):
-        longPressThreshold(longPressThreshold)
+    explicit PushButton(unsigned long thresholdMs = 2000)
+        : longPressThresholdMs(thresholdMs)
     {
         pinMode(this->pin, INPUT_PULLUP);
     }
 
-    void handle(const unsigned long now)
+    void setLongPressCallback(const std::function<void()>& callback)
     {
-        const bool currentState = digitalRead(pin);
+        longPressCallback = callback;
+    }
+
+    void setShortPressCallback(const std::function<void()>& callback)
+    {
+        shortPressCallback = callback;
+    }
+
+    void handle(unsigned long now)
+    {
+        bool currentState = digitalRead(pin);
+
+        if (currentState != lastState && (now - lastChange < debounceDelayMs)) {
+            // Ignore bounce
+            return;
+        }
 
         if (lastState == HIGH && currentState == LOW)
         {
             // Button just pressed
             lastDown = now;
             longPressHandled = false;
+            lastChange = now;
         }
         else if (lastState == LOW && currentState == LOW)
         {
             // Button is being held
-            if (!longPressHandled && (now - lastDown >= longPressThreshold))
+            if (!longPressHandled && (now - lastDown >= longPressThresholdMs))
             {
-                if (longPressCallback) longPressCallback();
+                maybeInvoke(longPressCallback);
                 longPressHandled = true;
             }
         }
         else if (lastState == LOW && currentState == HIGH)
         {
             // Button just released
-            if (unsigned long pressDuration = now - lastDown; !longPressHandled && pressDuration < longPressThreshold)
+            unsigned long pressDuration = now - lastDown;
+            if (!longPressHandled && pressDuration < longPressThresholdMs)
             {
-                if (shortPressCallback) shortPressCallback();
+                maybeInvoke(shortPressCallback);
             }
+            lastChange = now;
         }
 
         lastState = currentState;
