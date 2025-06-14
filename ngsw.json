@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1749891025467,
+  "timestamp": 1749934072076,
   "index": "https://type-info.github.io/rgbw-ctrl/index.html",
   "assetGroups": [
     {
@@ -11,11 +11,11 @@
         "ignoreVary": true
       },
       "urls": [
-        "https://type-info.github.io/rgbw-ctrl/chunk-JOGB7FW4.js",
-        "https://type-info.github.io/rgbw-ctrl/chunk-U75EUWEE.js",
+        "https://type-info.github.io/rgbw-ctrl/chunk-7KVTOFGA.js",
+        "https://type-info.github.io/rgbw-ctrl/chunk-ZC5JUIGN.js",
         "https://type-info.github.io/rgbw-ctrl/favicon.ico",
         "https://type-info.github.io/rgbw-ctrl/index.html",
-        "https://type-info.github.io/rgbw-ctrl/main-LTEHJOFX.js",
+        "https://type-info.github.io/rgbw-ctrl/main-GDAAFNJL.js",
         "https://type-info.github.io/rgbw-ctrl/manifest.webmanifest",
         "https://type-info.github.io/rgbw-ctrl/polyfills-B6TNHZQ6.js",
         "https://type-info.github.io/rgbw-ctrl/styles-36AW6TKX.css"
@@ -52,8 +52,8 @@
     "https://type-info.github.io/rgbw-ctrl/android-chrome-192x192.png": "6913aa833745c4c858867185d084a92837165bbb",
     "https://type-info.github.io/rgbw-ctrl/android-chrome-512x512.png": "63d7c273ca44b2fa5d23389dbdec3283336fe3da",
     "https://type-info.github.io/rgbw-ctrl/apple-touch-icon.png": "256f1fead4abfb57b465536affeaba595ac306c7",
-    "https://type-info.github.io/rgbw-ctrl/chunk-JOGB7FW4.js": "f681b64fa5e3b3419e657b48e8f169b7f1b51684",
-    "https://type-info.github.io/rgbw-ctrl/chunk-U75EUWEE.js": "0a7a520c91c491b82ecc3bdffe05c46f2b14c270",
+    "https://type-info.github.io/rgbw-ctrl/chunk-7KVTOFGA.js": "4dc099c73698157a6caca4a8a781b0dac1654147",
+    "https://type-info.github.io/rgbw-ctrl/chunk-ZC5JUIGN.js": "f941ca2fe756fe4176fb3a781f7ee006cb950ab0",
     "https://type-info.github.io/rgbw-ctrl/favicon-16x16.png": "498e9fac120e0e4d5c713d6f71b9cd1a6cb7e971",
     "https://type-info.github.io/rgbw-ctrl/favicon-32x32.png": "9b0bc97551137d45c0e96f44eee98425add2b1ce",
     "https://type-info.github.io/rgbw-ctrl/favicon.ico": "0c839ce40c4906aa9f7f51ac4b6b9215e8366cbe",
@@ -65,8 +65,8 @@
     "https://type-info.github.io/rgbw-ctrl/icons/icon-512x512.png": "120edb0bb235d0679904644068498e6e2f323267",
     "https://type-info.github.io/rgbw-ctrl/icons/icon-72x72.png": "3004aa5dbe0832f631055ce1fe04df03ebf18d19",
     "https://type-info.github.io/rgbw-ctrl/icons/icon-96x96.png": "132719c9510ead8aaf7f284cbadee04c59e40991",
-    "https://type-info.github.io/rgbw-ctrl/index.html": "66ad3f4f1d5e22d2f8d03353084150a099c700ca",
-    "https://type-info.github.io/rgbw-ctrl/main-LTEHJOFX.js": "a07a724ba07f4347580218dc6d4e6ed94effc026",
+    "https://type-info.github.io/rgbw-ctrl/index.html": "10b737c87797eb687fb48f7aeca5f42d21180729",
+    "https://type-info.github.io/rgbw-ctrl/main-GDAAFNJL.js": "567ea37ab73b42a7f7ecb34203ad76d936164c94",
     "https://type-info.github.io/rgbw-ctrl/manifest.webmanifest": "cedc10af8ec92b2580549dd8f0ab8a32a64e1654",
     "https://type-info.github.io/rgbw-ctrl/polyfills-B6TNHZQ6.js": "bf76ac291d7f51c1139b7edcf86b359a30c08c64",
     "https://type-info.github.io/rgbw-ctrl/styles-36AW6TKX.css": "173fa74a40cd51f896da8df76e2a21ac7900097e"
