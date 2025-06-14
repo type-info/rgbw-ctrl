@@ -19,12 +19,12 @@ import {ReactiveFormsModule} from "@angular/forms";
     MatButtonModule,
     ReactiveFormsModule
   ],
-  templateUrl: './yes-no-dialog.component.html',
-  styleUrl: './yes-no-dialog.component.scss'
+  templateUrl: './confirm-alexa-restart.component.html',
+  styleUrl: './confirm-alexa-restart.component.scss'
 })
-export class YesNoDialogComponent {
+export class ConfirmAlexaRestart {
 
-  constructor(@Inject(MAT_DIALOG_DATA) public title: string = 'Are you sure?') {
+  constructor() {
   }
 
 }

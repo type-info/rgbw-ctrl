@@ -353,20 +353,6 @@
           </div>
         </ng-container>
       </form>
-      <form style="grid-column: span 2; display: grid" [formGroup]="colorForm">
-        <mat-slider class="red-slider" [min]="0" [max]="255" [step]="1">
-          <input matSliderThumb formControlName="r">
-        </mat-slider>
-        <mat-slider class="green-slider" [min]="0" [max]="255" [step]="1">
-          <input matSliderThumb formControlName="g">
-        </mat-slider>
-        <mat-slider class="blue-slider" [min]="0" [max]="255" [step]="1">
-          <input matSliderThumb formControlName="b">
-        </mat-slider>
-        <mat-slider class="white-slider" [min]="0" [max]="255" [step]="1">
-          <input matSliderThumb formControlName="w">
-        </mat-slider>
-      </form>
     </mat-card>
   </mat-card-content>
   <mat-card-actions align="end">
@@ -376,6 +362,28 @@
       Apply
     </button>
   </mat-card-actions>
+</mat-card>
+<mat-card *ngIf="initialized">
+  <mat-card-content>
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <form style="grid-column: span 2; display: grid" [formGroup]="colorForm">
+          <mat-slider class="red-slider" [min]="0" [max]="255" [step]="1">
+            <input matSliderThumb formControlName="r">
+          </mat-slider>
+          <mat-slider class="green-slider" [min]="0" [max]="255" [step]="1">
+            <input matSliderThumb formControlName="g">
+          </mat-slider>
+          <mat-slider class="blue-slider" [min]="0" [max]="255" [step]="1">
+            <input matSliderThumb formControlName="b">
+          </mat-slider>
+          <mat-slider class="white-slider" [min]="0" [max]="255" [step]="1">
+            <input matSliderThumb formControlName="w">
+          </mat-slider>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  </mat-card-content>
 </mat-card>
 
 <mat-card *ngIf="initialized">

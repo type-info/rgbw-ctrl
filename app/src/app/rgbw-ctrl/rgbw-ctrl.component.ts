@@ -41,7 +41,7 @@ import {LoadingComponent} from '../loading/loading.component';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {EditDeviceNameComponentDialog} from './edit-device-name-dialog/edit-device-name-component-dialog.component';
-import {firstValueFrom} from 'rxjs';
+import {debounceTime, firstValueFrom, Subscription} from 'rxjs';
 import {ALEXA_MAX_DEVICE_NAME_LENGTH, AlexaIntegrationMode} from '../alexa-integration-settings.model';
 import {MatChipsModule} from '@angular/material/chips';
 import {
@@ -52,6 +52,7 @@ import {CustomWiFiConnectDialogComponent} from './custom-wi-fi-connect-dialog/cu
 import {MAX_OTA_PASSWORD_LENGTH, MAX_OTA_USERNAME_LENGTH} from '../ota.model';
 import {KilobytesPipe} from '../kb.pipe';
 import {MatSliderModule} from '@angular/material/slider';
+import {ConfirmAlexaRestart} from '../yes-no-dialog/confirm-alexa-restart.component';
 
 const BLE_NAME = "rgbw-ctrl";
 
@@ -106,6 +107,7 @@ export class RgbwCtrlComponent implements OnDestroy {
   readonly MAX_OTA_USERNAME_LENGTH = MAX_OTA_USERNAME_LENGTH;
   readonly MAX_OTA_PASSWORD_LENGTH = MAX_OTA_PASSWORD_LENGTH;
 
+  private colorSubscription: Subscription;
   alexaIntegrationModes = [
     {value: AlexaIntegrationMode.OFF, label: '❌', title: 'Off'},
     {value: AlexaIntegrationMode.RGBW_DEVICE, label: '🔴🟢🔵⚪', title: 'RGBW'},
@@ -203,20 +205,22 @@ export class RgbwCtrlComponent implements OnDestroy {
     private matDialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
-    this.colorForm.valueChanges.subscribe(value => {
-      if (this.alexaColorCharacteristic) {
-        const color = new Uint8Array(4);
-        color[0] = value.r ?? 0;
-        color[1] = value.g ?? 0;
-        color[2] = value.b ?? 0;
-        color[3] = value.w ?? 0;
-        this.alexaColorCharacteristic.writeValue(color)
-          .catch(console.error);
-      }
-    });
+    this.colorSubscription = this.colorForm.valueChanges.pipe(debounceTime(100))
+      .subscribe(value => {
+        if (this.alexaColorCharacteristic) {
+          const color = new Uint8Array(4);
+          color[0] = value.r ?? 0;
+          color[1] = value.g ?? 0;
+          color[2] = value.b ?? 0;
+          color[3] = value.w ?? 0;
+          this.alexaColorCharacteristic.writeValue(color)
+            .catch(console.error);
+        }
+      });
   }
 
   ngOnDestroy() {
+    this.colorSubscription.unsubscribe();
     this.disconnect();
   }
 
@@ -371,6 +375,7 @@ export class RgbwCtrlComponent implements OnDestroy {
     if (this.alexaIntegrationForm.invalid || !this.connected) {
       return;
     }
+    const shouldRestart = await firstValueFrom(this.matDialog.open(ConfirmAlexaRestart, {disableClose: true}).afterClosed());
     // Encode the form value and write via BLE
     const settings = this.alexaIntegrationForm.getRawValue();
     const payload = encodeAlexaIntegrationSettings(settings);
@@ -382,6 +387,9 @@ export class RgbwCtrlComponent implements OnDestroy {
       console.log('Failed to update Alexa settings:', e);
       this.snackBar.open('Failed to update Alexa settings', 'Close', {duration: 3000});
     } finally {
+      if (shouldRestart) {
+        await this.restartDevice();
+      }
       loading.close();
     }
   }
