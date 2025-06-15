@@ -291,7 +291,7 @@ export class RgbwCtrlComponent implements OnDestroy {
       await this.initBleAlexaIntegrationServices(this.server);
       device.addEventListener('gattserverdisconnected', () => {
         this.disconnect();
-        this.snackBar.open('Device disconnected', 'Reconnect', {duration: 0})
+        this.snackBar.open('Device disconnected', 'Reconnect', {duration: 3000})
           .onAction().subscribe(() => this.connectBleDevice());
       });
 
