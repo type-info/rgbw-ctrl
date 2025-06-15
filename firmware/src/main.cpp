@@ -59,6 +59,7 @@ void setup()
     {
         asyncCall([]()
         {
+            bleManager.stop();
             esp_restart();
         }, 1024, 300);
         request->send(200, "text/plain", "Restarting...");
