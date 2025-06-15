@@ -1,6 +1,6 @@
 import {Component, OnDestroy} from '@angular/core';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import {CommonModule} from '@angular/common';
+import {CommonModule, NgOptimizedImage} from '@angular/common';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {MatCardModule} from '@angular/material/card';
@@ -94,7 +94,8 @@ const ALEXA_COLOR_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee000a";
     NumberToIpPipe,
     ReactiveFormsModule,
     MatChipsModule,
-    KilobytesPipe
+    KilobytesPipe,
+    NgOptimizedImage
   ],
   templateUrl: './rgbw-ctrl.component.html',
   styleUrls: ['./rgbw-ctrl.component.scss']

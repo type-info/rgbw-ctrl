@@ -1,4 +1,7 @@
-<h1>rgbw-ctrl configuration page</h1>
+<h1 style="display: flex; place-items: center">
+  <img ngSrc="/icons/icon-72x72.png" alt="TypeInfo Logo" matTooltip="TypeInfo Logo" height="72" width="72">
+  rgbw-ctrl configuration page
+</h1>
 
 <div class="button-container">
   <button mat-raised-button color="warn" (click)="disconnect()" *ngIf="connected; else connectButton"
@@ -228,43 +231,35 @@
       <mat-card-header>
         <mat-card-subtitle>HTTP Endpoints</mat-card-subtitle>
       </mat-card-header>
-      <mat-card-content *ngIf="wifiDetails">
-        <div class="info-item" *ngIf="wifiDetails.ip">
-          <div class="label">OTA (Firmware Update)</div>
-          <a href="http://{{ wifiDetails.ip | numberToIp }}/update" target="_blank">
-            http://{{ wifiDetails.ip | numberToIp }}/update
-          </a>
-        </div>
-        <div class="info-item" *ngIf="wifiDetails.ip">
-          <div class="label">Restart</div>
-          <a href="http://{{ wifiDetails.ip | numberToIp }}/restart" target="_blank">
-            http://{{ wifiDetails.ip | numberToIp }}/restart
-          </a>
-        </div>
-        <div class="info-item" *ngIf="wifiDetails.ip">
-          <div class="label">Factory reset</div>
-          <a href="http://{{ wifiDetails.ip | numberToIp }}/reset" target="_blank">
-            http://{{ wifiDetails.ip | numberToIp }}/reset
-          </a>
-        </div>
-        <div class="info-item" *ngIf="wifiDetails.ip">
-          <div class="label">Bluetooth on</div>
-          <a href="http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=on" target="_blank">
-            http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=on
-          </a>
-        </div>
-        <div class="info-item" *ngIf="wifiDetails.ip">
-          <div class="label">Bluetooth off</div>
-          <a href="http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=off" target="_blank">
-            http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=off
-          </a>
-        </div>
-        <div class="info-item" *ngIf="wifiDetails.ip">
-          <div class="label">Color</div>
-          <a href="http://{{ wifiDetails.ip | numberToIp }}/color?r=255&g=255&b=255&w=255" target="_blank">
-            http://{{ wifiDetails.ip | numberToIp }}/color?r=255&g=255&b=255&w=255
-          </a>
-        </div>
+      <mat-card-content *ngIf="wifiDetails" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem">
+        <a mat-stroked-button *ngIf="wifiDetails.ip" href="http://{{ wifiDetails.ip | numberToIp }}/update"
+           target="_blank">
+          OTA (Firmware Update)
+        </a>
+        <a mat-stroked-button *ngIf="wifiDetails.ip" href="http://{{ wifiDetails.ip | numberToIp }}/restart"
+           target="_blank">
+          Restart
+        </a>
+        <a mat-stroked-button *ngIf="wifiDetails.ip" href="http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=on"
+           target="_blank">
+          Bluetooth on
+        </a>
+        <a mat-stroked-button *ngIf="wifiDetails.ip" href="http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=off"
+           target="_blank">
+          Bluetooth off
+        </a>
+        <a mat-stroked-button *ngIf="wifiDetails.ip"
+           href="http://{{ wifiDetails.ip | numberToIp }}/color?r=255&g=255&b=255&w=255" target="_blank">
+          All lights on
+        </a>
+        <a mat-stroked-button *ngIf="wifiDetails.ip"
+           href="http://{{ wifiDetails.ip | numberToIp }}/color?r=0&g=0&b=0&w=0" target="_blank">
+          All lights off
+        </a>
+        <a mat-stroked-button *ngIf="wifiDetails.ip" href="http://{{ wifiDetails.ip | numberToIp }}/reset"
+           target="_blank">
+          Factory reset
+        </a>
       </mat-card-content>
     </mat-card>
   </mat-card-content>

@@ -41,24 +41,28 @@ public:
             auto r = this->getValue(Color::Red);
             if (request->hasParam("r"))
             {
-                r = std::min(std::max(request->getParam("r")->value().toInt(), 255l), 0l);
+                r = std::max(std::min(request->getParam("r")->value().toInt(), 255l), 0l);
             }
             auto g = this->getValue(Color::Green);
             if (request->hasParam("g"))
             {
-                g = std::min(std::max(request->getParam("g")->value().toInt(), 255l), 0l);
+                g = std::max(std::min(request->getParam("g")->value().toInt(), 255l), 0l);
             }
             auto b = this->getValue(Color::Blue);
             if (request->hasParam("b"))
             {
-                b = std::min(std::max(request->getParam("b")->value().toInt(), 255l), 0l);
+                b = std::max(std::min(request->getParam("b")->value().toInt(), 255l), 0l);
             }
             auto w = this->getValue(Color::White);
             if (request->hasParam("w"))
             {
-                w = std::min(std::max(request->getParam("w")->value().toInt(), 255l), 0l);
+                w = std::max(std::min(request->getParam("w")->value().toInt(), 255l), 0l);
             }
             this->setColor(r, g, b, w);
+            if (r > 0 || g > 0 || b > 0 || w > 0)
+            {
+                this->turnOn();
+            }
             request->send(200, "text/plain", "Color set");
         });
     }

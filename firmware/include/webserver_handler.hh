@@ -24,6 +24,11 @@ public:
 
     void begin()
     {
+        webServer.serveStatic("/", LittleFS, "/")
+                 .setDefaultFile("index.html")
+                 .setTryGzipFirst(true)
+                 .addMiddleware(&basicAuth);
+
         updateServerCredentials(getCredentials());
         webServer.addHandler(&ws);
         // Can't call webServer.begin()

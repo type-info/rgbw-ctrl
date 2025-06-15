@@ -1,0 +1,57 @@
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background-color: #f0f0f0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    div {
+        max-width: 500px;
+    }
+
+    a {
+        display: inline-block;
+        margin: 10px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+    }
+
+    a:hover {
+        background-color: #0056b3;
+    }
+</style>
+<h1>
+    <img src="icon-152x152.png">
+    rgbw-ctrl<br>
+    firmware update
+</h1>
+<div>
+    <a href="/update" target="_blank">
+        OTA (Firmware Update)
+    </a>
+    <a href="/restart" target="_blank">
+        Restart
+    </a>
+    <a href="/bluetooth?state=on" target="_blank">
+        Bluetooth on
+    </a>
+    <a href="/bluetooth?state=off" target="_blank">
+        Bluetooth off
+    </a>
+    <a href="/color?r=255&g=255&b=255&w=255" target="_blank">
+        All lights on
+    </a>
+    <a href="/color?r=0&g=0&b=0&w=0" target="_blank">
+        All lights off
+    </a>
+    <a href="/reset" target="_blank">
+        Factory reset
+    </a>
+</div>

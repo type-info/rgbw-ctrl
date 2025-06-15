@@ -12,7 +12,7 @@ class OtaHandler
 public:
     void begin(AsyncWebServer* webServer)
     {
-        updateServer.setup(webServer);
+        updateServer.setup(webServer, "/update");
     }
 
     void updateServerCredentials(const HttpCredentials& credentials)

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <nvs_flash.h>
+#include <LittleFS.h>
 
 #include "wifi_manager.hh"
 #include "board_led.hh"
@@ -55,6 +56,7 @@ void setup()
         output.toggleAll();
     });
 
+    LittleFS.begin(true);
     webServerHandler.on("/restart", HTTP_GET, [](AsyncWebServerRequest* request)
     {
         asyncCall([]()
