@@ -35,6 +35,7 @@ class WiFiManager
 public:
     void begin()
     {
+        WiFi.persistent(false);
         WiFi.mode(WIFI_MODE_STA);
         WiFi.onEvent([this](const WiFiEvent_t event, const WiFiEventInfo_t& info)
         {

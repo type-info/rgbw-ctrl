@@ -38,31 +38,27 @@ public:
             light.setup();
         webServerHandler.on("/color", HTTP_GET, [this](AsyncWebServerRequest* request)
         {
-            if (request->hasParam("r") && request->hasParam("g") && request->hasParam("b"))
+            auto r = this->getValue(Color::Red);
+            if (request->hasParam("r"))
             {
-                auto r = this->getValue(Color::Red);
-
-                if (request->hasParam("r"))
-                {
-                    r = request->getParam("r")->value().toInt();
-                }
-                auto g = this->getValue(Color::Green);
-                if (request->hasParam("g"))
-                {
-                    g = request->getParam("g")->value().toInt();
-                }
-                auto b = this->getValue(Color::Blue);
-                if (request->hasParam("b"))
-                {
-                    b = request->getParam("b")->value().toInt();
-                }
-                auto w = this->getValue(Color::White);
-                if (request->hasParam("w"))
-                {
-                    w = request->getParam("w")->value().toInt();
-                }
-                this->setColor(r, g, b, w);
+                r = std::min(std::max(request->getParam("r")->value().toInt(), 255l), 0l);
             }
+            auto g = this->getValue(Color::Green);
+            if (request->hasParam("g"))
+            {
+                g = std::min(std::max(request->getParam("g")->value().toInt(), 255l), 0l);
+            }
+            auto b = this->getValue(Color::Blue);
+            if (request->hasParam("b"))
+            {
+                b = std::min(std::max(request->getParam("b")->value().toInt(), 255l), 0l);
+            }
+            auto w = this->getValue(Color::White);
+            if (request->hasParam("w"))
+            {
+                w = std::min(std::max(request->getParam("w")->value().toInt(), 255l), 0l);
+            }
+            this->setColor(r, g, b, w);
             request->send(200, "text/plain", "Color set");
         });
     }
