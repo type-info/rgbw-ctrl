@@ -26,24 +26,6 @@ public:
     {
         updateServerCredentials(getCredentials());
         webServer.addHandler(&ws);
-        this->on("/restart", HTTP_GET, [](AsyncWebServerRequest* request)
-        {
-            asyncCall([]()
-            {
-                esp_restart();
-            }, 1024, 300);
-            request->send(200, "text/plain", "Restarting...");
-        });
-        this->on("/reset", HTTP_GET, [](AsyncWebServerRequest* request)
-        {
-            asyncCall([]()
-            {
-                nvs_flash_erase();
-                delay(100);
-                esp_restart();
-            }, 1024, 300);
-            request->send(200, "text/plain", "Resetting to factory defaults...");
-        });
         // Can't call webServer.begin()
         // because alexaIntegration does it
     }

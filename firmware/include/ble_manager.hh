@@ -73,6 +73,7 @@ public:
 
     void start()
     {
+        if (server != nullptr) return;
         wifiManager.setDetailsChangedCallback([this](WiFiDetails wiFiScanResult)
         {
             if (!wifiDetailsCharacteristic) return;

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <nvs_flash.h>
 
 #include "wifi_manager.hh"
 #include "board_led.hh"
@@ -18,10 +19,11 @@ WebServerHandler webServerHandler(otaHandler);
 AlexaIntegration alexaIntegration(output);
 BleManager bleManager(output, wifiManager, alexaIntegration, webServerHandler);
 
-unsigned long lastClientConnectedAt = 0;
+volatile unsigned long lastClientConnectedAt = 0;
 
 void setup()
 {
+    nvs_flash_init();
     boardLED.begin();
     output.begin(webServerHandler);
     wifiManager.begin();
@@ -45,13 +47,32 @@ void setup()
     boardButton.setLongPressCallback([]()
     {
         lastClientConnectedAt = millis();
-        if (!bleManager.isInitialised())
-            bleManager.start();
+        bleManager.start();
     });
 
     boardButton.setShortPressCallback([]()
     {
         output.toggleAll();
+    });
+
+    webServerHandler.on("/restart", HTTP_GET, [](AsyncWebServerRequest* request)
+    {
+        asyncCall([]()
+        {
+            esp_restart();
+        }, 1024, 300);
+        request->send(200, "text/plain", "Restarting...");
+    });
+    webServerHandler.on("/reset", HTTP_GET, [](AsyncWebServerRequest* request)
+    {
+        asyncCall([]()
+        {
+            nvs_flash_erase();
+            delay(300);
+            bleManager.stop();
+            esp_restart();
+        }, 2048, 300);
+        request->send(200, "text/plain", "Resetting to factory defaults...");
     });
 
     webServerHandler.on("/bluetooth", HTTP_GET, [](AsyncWebServerRequest* request)
@@ -62,13 +83,11 @@ void setup()
             if (state == true)
             {
                 lastClientConnectedAt = millis();
-                if (!bleManager.isInitialised())
-                    bleManager.start();
+                bleManager.start();
             }
             else
             {
-                if (bleManager.isInitialised())
-                    bleManager.stop();
+                bleManager.stop();
             }
         }, 4096, 50);
         if (state)
