@@ -14,7 +14,7 @@ BoardLED boardLED;
 OtaHandler otaHandler;
 PushButton boardButton;
 WiFiManager wifiManager;
-WebServerHandler webServerHandler;
+WebServerHandler webServerHandler(otaHandler);
 AlexaIntegration alexaIntegration(output);
 BleManager bleManager(output, wifiManager, alexaIntegration, webServerHandler);
 

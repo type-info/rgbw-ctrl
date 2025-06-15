@@ -2,15 +2,8 @@
 
 #include <nvs_flash.h>
 #include "ESPAsyncWebServer.h"
-
-struct HttpCredentials
-{
-    static constexpr auto MAX_USERNAME_LENGTH = 32;
-    static constexpr auto MAX_PASSWORD_LENGTH = 32;
-
-    char username[MAX_USERNAME_LENGTH + 1] = {};
-    char password[MAX_PASSWORD_LENGTH + 1] = {};
-};
+#include "ota_handler.hh"
+#include "http_credentials.hh"
 
 class WebServerHandler
 {
@@ -22,8 +15,13 @@ class WebServerHandler
     AsyncWebSocketMessageHandler wsHandler;
     AsyncWebSocket ws = AsyncWebSocket("/ws", wsHandler.eventHandler());
     AsyncAuthenticationMiddleware basicAuth;
+    OtaHandler& otaHandler;
 
 public:
+    explicit WebServerHandler(OtaHandler& otaHandler): otaHandler(otaHandler)
+    {
+    }
+
     void begin()
     {
         updateServerCredentials(getCredentials());
@@ -41,6 +39,7 @@ public:
             asyncCall([]()
             {
                 nvs_flash_erase();
+                delay(100);
                 esp_restart();
             }, 1024, 300);
             request->send(200, "text/plain", "Resetting to factory defaults...");
@@ -123,6 +122,7 @@ private:
         basicAuth.setAuthFailureMessage("Authentication failed");
         basicAuth.setAuthType(AsyncAuthType::AUTH_BASIC);
         basicAuth.generateHash();
+        otaHandler.updateServerCredentials(credentials);
     }
 
     [[nodiscard]] static String generateRandomPassword()
