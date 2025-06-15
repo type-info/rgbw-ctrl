@@ -20,6 +20,8 @@ mat-card {
 }
 
 mat-card-header {
+  min-height: 40px;
+
   ::ng-deep > .mat-mdc-card-header-text {
     width: 100%;
     position: relative;

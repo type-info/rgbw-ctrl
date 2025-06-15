@@ -24,7 +24,7 @@
 <mat-card *ngIf="initialized">
   <mat-card-header>
     <mat-card-title>
-      <div style="min-height: 40px">
+      <div>
         <span>Device Information</span>
       </div>
     </mat-card-title>
@@ -47,6 +47,57 @@
         <div class="label">Free Heap:</div>
         <span>{{ deviceHeap | kb:3 }}</span>
       </div>
+    </mat-card>
+  </mat-card-content>
+</mat-card>
+
+<!-- Color Control -->
+<mat-card *ngIf="initialized">
+  <mat-card-header>
+    <mat-card-title>
+      <div>
+        <span>Color Control</span>
+      </div>
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-card appearance="outlined" style="margin-top: 0.5rem">
+      <mat-card-content>
+        <form style="grid-column: span 2; display: grid" [formGroup]="colorForm">
+          <mat-slider class="red-slider">
+            <input matSliderThumb formControlName="r">
+          </mat-slider>
+          <mat-slider class="green-slider">
+            <input matSliderThumb formControlName="g">
+          </mat-slider>
+          <mat-slider class="blue-slider">
+            <input matSliderThumb formControlName="b">
+          </mat-slider>
+          <mat-slider class="white-slider">
+            <input matSliderThumb formControlName="w">
+          </mat-slider>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  </mat-card-content>
+</mat-card>
+
+<!-- WiFi Configuration -->
+<mat-card *ngIf="initialized">
+  <mat-card-header style="margin-bottom: 1rem; justify-content: center;">
+    <mat-card-title>
+      <div>
+        <mat-icon aria-label="Wi-Fi">wifi</mat-icon>
+        <span>WiFi</span>
+      </div>
+      <button mat-stroked-button (click)="startWifiScan()" [disabled]="scanning || !connected" class="scan-button">
+        <mat-progress-spinner *ngIf="scanning" diameter="20" mode="indeterminate" color="accent"></mat-progress-spinner>
+        Scan
+      </button>
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <mat-card *ngIf="wifiDetails" appearance="outlined" style="padding: 1rem">
       <div class="info-item" *ngIf="wifiDetails.ssid">
         <div class="label">Configured network:</div>
         <span>{{ wifiDetails.ssid }}</span>
@@ -67,39 +118,53 @@
         <div class="label">MAC Address:</div>
         <span>{{ wifiDetails.mac }}</span>
       </div>
-      <div class="info-item" *ngIf="wifiDetails.ip">
+      <div class="info-item">
         <div class="label">IP:</div>
-        <span>{{ wifiDetails.ip | numberToIp }}</span>
+        <span *ngIf="wifiDetails.ip">{{ wifiDetails.ip | numberToIp }}</span>
       </div>
-      <div class="info-item" *ngIf="wifiDetails.gateway">
+      <div class="info-item">
         <div class="label">Gateway:</div>
-        <span>{{ wifiDetails.gateway | numberToIp }}</span>
+        <span *ngIf="wifiDetails.gateway">{{ wifiDetails.gateway | numberToIp }}</span>
       </div>
-      <div class="info-item" *ngIf="wifiDetails.subnet">
+      <div class="info-item">
         <div class="label">Subnet:</div>
-        <span>{{ wifiDetails.subnet | numberToIp }}</span>
+        <span *ngIf="wifiDetails.subnet">{{ wifiDetails.subnet | numberToIp }}</span>
       </div>
-      <div class="info-item" *ngIf="wifiDetails.dns">
+      <div class="info-item">
         <div class="label">DNS:</div>
-        <span>{{ wifiDetails.dns | numberToIp }}</span>
+        <span *ngIf="wifiDetails.dns">{{ wifiDetails.dns | numberToIp }}</span>
       </div>
-      <div class="info-item" *ngIf="wifiDetails.ip">
-        <div class="label">OTA Link:</div>
-        <span>
-          <a href="http://{{ wifiDetails.ip | numberToIp }}/update" target="_blank">
-            http://{{ wifiDetails.ip | numberToIp }}/update
-          </a>
-        </span>
-      </div>
+    </mat-card>
+    <mat-card appearance="outlined" style="margin: 1rem 0">
+      <mat-card-header>
+        <mat-card-subtitle>Available Networks:</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-selection-list [multiple]="false">
+          @for (network of wifiScanResult; track network.ssid) {
+            <mat-list-item (click)="connectToNetwork(network)" [class.selected]="network.ssid === wifiDetails?.ssid">
+              <mat-icon>rss_feed</mat-icon>
+              {{ network.ssid }}
+            </mat-list-item>
+          }
+        </mat-selection-list>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-raised-button color="primary" (click)="connectToCustomNetwork()">
+          <mat-icon>add</mat-icon>
+          Custom Network
+        </button>
+      </mat-card-actions>
     </mat-card>
   </mat-card-content>
 </mat-card>
 
+<!-- HTTP -->
 <mat-card class="alexa-card" *ngIf="initialized">
   <mat-card-header>
     <mat-card-title>
       <div>
-        <span>OTA (Firmware update)</span>
+        <span>HTTP</span>
       </div>
       <button mat-stroked-button matTooltip="Reload OTA credentials"
               (click)="loadOtaCredentials()" [disabled]="loadingOtaCredentials || !connected" class="scan-button">
@@ -110,55 +175,102 @@
     </mat-card-title>
   </mat-card-header>
   <mat-card-content>
-    <mat-card appearance="outlined" style="margin-top: 0.5rem; padding: 1rem">
-      <form [formGroup]="otaCredentialsForm" autocomplete="off">
-        <mat-form-field appearance="outline" floatLabel="always">
-          <mat-label>Username</mat-label>
-          <input matInput formControlName="username">
-          <mat-hint align="end">
-            {{ otaCredentialsForm.controls.username.value.length }} / {{ MAX_OTA_USERNAME_LENGTH }}
-          </mat-hint>
-          <mat-error *ngIf="otaCredentialsForm.controls.username.hasError('required')">
-            This field is required
-          </mat-error>
-          <mat-error *ngIf="otaCredentialsForm.controls.username.hasError('maxlength')">
-            Maximum {{ MAX_OTA_USERNAME_LENGTH }} characters
-          </mat-error>
-        </mat-form-field>
-        <mat-form-field appearance="outline" floatLabel="always">
-          <mat-label>Password</mat-label>
-          <input matInput formControlName="password" type="password" #otaPassInput>
-          <button
-            mat-icon-button
-            matSuffix
-            (click)="otaPassInput.type === 'password' ? otaPassInput.type = 'text' : otaPassInput.type = 'password'"
-            [attr.aria-label]="'Hide password'"
-            [attr.aria-pressed]="otaPassInput.type === 'password'"
-          >
-            <mat-icon>{{ otaPassInput.type === 'password' ? 'visibility_off' : 'visibility' }}</mat-icon>
+    <mat-card appearance="outlined" style="margin-top: 0.5rem">
+      <mat-card-header>
+        <mat-card-subtitle>Credentials</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="otaCredentialsForm" autocomplete="off" style="display: grid">
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Username</mat-label>
+            <input matInput formControlName="username">
+            <mat-hint align="end">
+              {{ otaCredentialsForm.controls.username.value.length }} / {{ MAX_OTA_USERNAME_LENGTH }}
+            </mat-hint>
+            <mat-error *ngIf="otaCredentialsForm.controls.username.hasError('required')">
+              This field is required
+            </mat-error>
+            <mat-error *ngIf="otaCredentialsForm.controls.username.hasError('maxlength')">
+              Maximum {{ MAX_OTA_USERNAME_LENGTH }} characters
+            </mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Password</mat-label>
+            <input matInput formControlName="password" type="password" #otaPassInput>
+            <button
+              mat-icon-button
+              matSuffix
+              (click)="otaPassInput.type === 'password' ? otaPassInput.type = 'text' : otaPassInput.type = 'password'"
+              [attr.aria-label]="'Hide password'"
+              [attr.aria-pressed]="otaPassInput.type === 'password'"
+            >
+              <mat-icon>{{ otaPassInput.type === 'password' ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            <mat-hint align="end">
+              {{ otaCredentialsForm.controls.password.value.length }} / {{ MAX_OTA_PASSWORD_LENGTH }}
+            </mat-hint>
+            <mat-error *ngIf="otaCredentialsForm.controls.password.hasError('required')">
+              This field is required
+            </mat-error>
+            <mat-error *ngIf="otaCredentialsForm.controls.password.hasError('maxlength')">
+              Maximum {{ MAX_OTA_PASSWORD_LENGTH }} characters
+            </mat-error>
+          </mat-form-field>
+          <button mat-raised-button color="primary" style="place-self: end; margin-top: 0.5rem"
+                  [disabled]="otaCredentialsForm.invalid || !connected"
+                  (click)="applyOtaCredentials()">
+            Apply
           </button>
-          <mat-hint align="end">
-            {{ otaCredentialsForm.controls.password.value.length }} / {{ MAX_OTA_PASSWORD_LENGTH }}
-          </mat-hint>
-          <mat-error *ngIf="otaCredentialsForm.controls.password.hasError('required')">
-            This field is required
-          </mat-error>
-          <mat-error *ngIf="otaCredentialsForm.controls.password.hasError('maxlength')">
-            Maximum {{ MAX_OTA_PASSWORD_LENGTH }} characters
-          </mat-error>
-        </mat-form-field>
-      </form>
+        </form>
+      </mat-card-content>
+    </mat-card>
+    <mat-card appearance="outlined" style="margin-top: 1rem">
+      <mat-card-header>
+        <mat-card-subtitle>HTTP Endpoints</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content *ngIf="wifiDetails">
+        <div class="info-item" *ngIf="wifiDetails.ip">
+          <div class="label">OTA (Firmware Update)</div>
+          <a href="http://{{ wifiDetails.ip | numberToIp }}/update" target="_blank">
+            http://{{ wifiDetails.ip | numberToIp }}/update
+          </a>
+        </div>
+        <div class="info-item" *ngIf="wifiDetails.ip">
+          <div class="label">Restart</div>
+          <a href="http://{{ wifiDetails.ip | numberToIp }}/restart" target="_blank">
+            http://{{ wifiDetails.ip | numberToIp }}/restart
+          </a>
+        </div>
+        <div class="info-item" *ngIf="wifiDetails.ip">
+          <div class="label">Factory reset</div>
+          <a href="http://{{ wifiDetails.ip | numberToIp }}/reset" target="_blank">
+            http://{{ wifiDetails.ip | numberToIp }}/reset
+          </a>
+        </div>
+        <div class="info-item" *ngIf="wifiDetails.ip">
+          <div class="label">Bluetooth on</div>
+          <a href="http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=on" target="_blank">
+            http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=on
+          </a>
+        </div>
+        <div class="info-item" *ngIf="wifiDetails.ip">
+          <div class="label">Bluetooth off</div>
+          <a href="http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=off" target="_blank">
+            http://{{ wifiDetails.ip | numberToIp }}/bluetooth?state=off
+          </a>
+        </div>
+        <div class="info-item" *ngIf="wifiDetails.ip">
+          <div class="label">Color</div>
+          <a href="http://{{ wifiDetails.ip | numberToIp }}/color?r=255&g=255&b=255&w=255" target="_blank">
+            http://{{ wifiDetails.ip | numberToIp }}/color?r=255&g=255&b=255&w=255
+          </a>
+        </div>
+      </mat-card-content>
     </mat-card>
   </mat-card-content>
-  <mat-card-actions align="end">
-    <button mat-raised-button color="primary"
-            [disabled]="otaCredentialsForm.invalid || !connected"
-            (click)="applyOtaCredentials()">
-      Apply
-    </button>
-  </mat-card-actions>
 </mat-card>
 
+<!-- Alexa Integration -->
 <mat-card class="alexa-card" *ngIf="initialized">
   <mat-card-header>
     <mat-card-title>
@@ -189,7 +301,7 @@
           {{ mode.label }}
         </mat-chip-option>
       </mat-chip-listbox>
-      <form [formGroup]="alexaIntegrationForm" autocomplete="off" style="grid-column: span 2">
+      <form [formGroup]="alexaIntegrationForm" autocomplete="off" style="display: grid; grid-column: span 2">
         <ng-container [ngSwitch]="alexaIntegrationForm.value.integrationMode">
           <div *ngSwitchCase="AlexaIntegrationMode.OFF"></div>
           <!-- RGBW_DEVICE: Only rDeviceName is used -->
@@ -352,87 +464,12 @@
             <span>Unknown integration mode.</span>
           </div>
         </ng-container>
-      </form>
-    </mat-card>
-  </mat-card-content>
-  <mat-card-actions align="end">
-    <button mat-raised-button color="primary"
-            [disabled]="alexaIntegrationForm.invalid || !connected"
-            (click)="applyAlexaIntegrationSettings()">
-      Apply
-    </button>
-  </mat-card-actions>
-</mat-card>
-<mat-card *ngIf="initialized">
-  <mat-card-header>
-    <mat-card-title>
-      <div>
-        <span>State</span>
-      </div>
-      <button mat-stroked-button matTooltip="Reload Alexa integration settings"
-              (click)="readAlexaColor()" [disabled]="readingAlexaColor || !connected" class="scan-button">
-        <mat-progress-spinner *ngIf="loadingAlexa" diameter="20" mode="indeterminate"
-                              color="accent"></mat-progress-spinner>
-        Reload
-      </button>
-    </mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    <mat-card appearance="outlined" style="margin-top: 0.5rem">
-      <mat-card-content>
-        <form style="grid-column: span 2; display: grid" [formGroup]="colorForm">
-          <mat-slider class="red-slider">
-            <input matSliderThumb formControlName="r">
-          </mat-slider>
-          <mat-slider class="green-slider">
-            <input matSliderThumb formControlName="g">
-          </mat-slider>
-          <mat-slider class="blue-slider">
-            <input matSliderThumb formControlName="b">
-          </mat-slider>
-          <mat-slider class="white-slider">
-            <input matSliderThumb formControlName="w">
-          </mat-slider>
-        </form>
-      </mat-card-content>
-    </mat-card>
-  </mat-card-content>
-</mat-card>
-
-<mat-card *ngIf="initialized">
-  <mat-card-header style="margin-bottom: 1rem; justify-content: center;">
-    <mat-card-title>
-      <div>
-        <mat-icon aria-label="Wi-Fi">wifi</mat-icon>
-        <span>WiFi</span>
-      </div>
-      <button mat-stroked-button (click)="startWifiScan()" [disabled]="scanning || !connected" class="scan-button">
-        <mat-progress-spinner *ngIf="scanning" diameter="20" mode="indeterminate" color="accent"></mat-progress-spinner>
-        Scan
-      </button>
-    </mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    <mat-card appearance="outlined">
-      <mat-card-header>
-        <mat-card-subtitle>Available Networks:</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <mat-selection-list [multiple]="false">
-          @for (network of wifiScanResult; track network.ssid) {
-            <mat-list-item (click)="connectToNetwork(network)" [class.selected]="network.ssid === wifiDetails?.ssid">
-              <mat-icon>rss_feed</mat-icon>
-              {{ network.ssid }}
-            </mat-list-item>
-          }
-        </mat-selection-list>
-      </mat-card-content>
-      <mat-card-actions align="end">
-        <button mat-raised-button color="primary" (click)="connectToCustomNetwork()">
-          <mat-icon>add</mat-icon>
-          Custom Network
+        <button mat-raised-button color="primary" style="margin-left: auto; margin-top: 0.5rem"
+                [disabled]="alexaIntegrationForm.invalid || !connected"
+                (click)="applyAlexaIntegrationSettings()">
+          Apply
         </button>
-      </mat-card-actions>
+      </form>
     </mat-card>
   </mat-card-content>
 </mat-card>
