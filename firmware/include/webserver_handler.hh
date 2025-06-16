@@ -23,17 +23,17 @@ class WebServerHandler
     AsyncAuthenticationMiddleware basicAuth;
 
 public:
-    void begin()
+    void begin(AsyncWebHandler* alexaHandler)
     {
+        webServer.addHandler(&ws);
+        webServer.addHandler(alexaHandler);
         webServer.serveStatic("/", LittleFS, "/")
                  .setDefaultFile("index.html")
                  .setTryGzipFirst(true)
                  .addMiddleware(&basicAuth);
 
         updateServerCredentials(getCredentials());
-        webServer.addHandler(&ws);
-        // Can't call webServer.begin()
-        // because alexaIntegration does it
+        webServer.begin();
     }
 
     void handle()

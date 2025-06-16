@@ -32,7 +32,7 @@ void setup()
     wifiManager.setGotIpCallback([]()
     {
         alexaIntegration.begin(webServerHandler);
-        webServerHandler.begin();
+        webServerHandler.begin(alexaIntegration.createAsyncWebHandler());
     });
 
     if (const auto credentials = WiFiManager::loadCredentials())

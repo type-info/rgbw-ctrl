@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstring>
 #include <utility>
 #include <memory>
 #include <Espalexa.h>
@@ -46,13 +45,6 @@ public:
 
     void begin(WebServerHandler& webServerHandler)
     {
-        webServerHandler.onNotFound([this](AsyncWebServerRequest* request)
-        {
-            if (!espalexa.handleAlexaApiCall(request))
-            {
-                request->send(404, "text/plain", "Not found");
-            }
-        });
         loadPreferences();
         setupDevices();
         for (const auto& device : devices)
@@ -62,12 +54,17 @@ public:
                 espalexa.addDevice(device.get());
             }
         }
-        espalexa.begin(webServerHandler.getWebServer());
+        espalexa.begin();
     }
 
     void handle()
     {
         espalexa.loop();
+    }
+
+    AsyncWebHandler* createAsyncWebHandler()
+    {
+        return espalexa.createAlexaAsyncWebHandler();
     }
 
     [[nodiscard]] const AlexaIntegrationSettings& getSettings() const
