@@ -2,81 +2,82 @@
 
 This repository provides the firmware for an ESP32 based RGBW LED controller together with an Angular web application for configuration. The device exposes Wi‑Fi and Bluetooth Low Energy services so it can be configured directly from a browser via Web Bluetooth. It also supports Alexa integration and OTA firmware updates.
 
-## Features
+## Board LED Status Indicator
 
-- RGBW LED control with adjustable brightness and color
-- Wi‑Fi configuration over Bluetooth through the PWA
-- Device name customization and heap monitoring
-- Alexa integration for voice control
-- Over‑the‑air firmware updates
-- HTTP endpoints to restart the controller and set colors
+The `BoardLED` class provides a simple, visual representation of system status using the onboard RGB LED. It conveys Bluetooth, Wi-Fi, and OTA update states using colors and effects (steady or fading).
 
-## Repository structure
+### Features
 
-- **`firmware/`** – PlatformIO project implementing the ESP32 firmware.
-- **`app/`** – Angular PWA that communicates with the device over BLE.
+* ✨ **Smooth fade blinking** for advertising and scanning states
+* 🟢 **Static colors** for stable statuses
+* 🎯 **Priority handling** to ensure the most critical state is always shown
 
-## Building the firmware
+### Color Codes & Behavior
 
-Install [PlatformIO](https://platformio.org/) and then run:
+| State                   | Color      | Behavior | Description                             |
+| ----------------------- | ---------  | -------- | --------------------------------------- |
+| 🔄 OTA update running   | 🟣 Purple | Fading   | Indicates firmware update in progress   |
+| 🤝 BLE client connected | 🟡 Yellow | Steady   | Device is actively connected via BLE    |
+| 📡 BLE advertising      | 🔵 Blue   | Fading   | BLE is active, waiting for a connection |
+| 📶 Wi-Fi scan running   | 🟡 Yellow | Fading   | Scanning for available Wi-Fi networks   |
+| 🌐 Wi-Fi connected      | 🟢 Green  | Steady   | Device is connected to a Wi-Fi network  |
+| ❌ Wi-Fi disconnected   | 🔴 Red    | Steady   | No Wi-Fi connection available           |
+
+## OTA Update via Web Server
+
+This project includes support for OTA (Over-the-Air) firmware and filesystem updates via HTTP POST requests using the `OtaHandler` class.
+
+### 📡 Supported Upload Targets
+
+* **Firmware**
+* **Filesystem** (works only with LittleFS partitions)
+
+---
+
+### 🔒 Authentication
+
+OTA endpoints are protected using Basic Authentication via `AsyncAuthenticationMiddleware`. Unauthorized requests receive `401 Unauthorized`.
+
+---
+
+### 🔧 Endpoints
+
+#### `POST /update`
+
+Uploads a new firmware or filesystem image.
+
+##### Parameters
+
+| Parameter | Type   | Required | Description                          |
+| --------- | ------ | -------- | ------------------------------------ |
+| `name`    | string | Optional | `firmware` (default) or `filesystem` |
+
+##### Example
+
+**Upload firmware:**
 
 ```bash
-cd firmware
-pio run            # build
-pio run -t upload  # build and upload to the board
+curl -u user:pass -F "file=@firmware.bin" http://<device-ip>/update
 ```
 
-Key build settings are defined in `firmware/platformio.ini`:
-
-```ini
-[env:esp32doit-devkit-v1]
-platform = espressif32
-board = esp32doit-devkit-v1
-framework = arduino
-monitor_speed = 115200
-monitor_filters = direct
-board_build.partitions = partitions.csv
-lib_deps =
-    ESP32Async/AsyncTCP
-        ESP32Async/ESPAsyncWebServer
-    ipdotsetaf/ESPAsyncHTTPUpdateServer
-    https://github.com/type-info/Espalexa.git
-build_unflags = -std=gnu++11
-build_flags =
-    -std=gnu++2a
-    -D ESPALEXA_ASYNC
-    -D CONFIG_BT_CONTROLLER_MODE_BLE_ONLY=1
-    -D ESPASYNCHTTPUPDATESERVER_PRETTY
-    -D CONFIG_ASYNC_TCP_MAX_ACK_TIME=10000
-```
-
-## Building the web application
-
-The web interface requires Node.js and npm. To build the PWA run:
+**Upload filesystem (LittleFS):**
 
 ```bash
-cd app
-npm install
-npm run build
+curl -u user:pass -F "name=filesystem" -F "file=@littlefs.bin" http://<device-ip>/update
 ```
 
-The output will be generated in `app/dist/rgbw-ctrl-setup`. Available npm scripts are listed in `app/package.json`:
+---
 
-```json
-{
-  "name": "rgbw-ctrl-setup",
-  "version": "0.0.0",
-  "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
-  }
-}
+### 🔁 Auto-Restart
+
+After a successful OTA update, the device automatically restarts using:
+
+```cpp
+ESP.restart();
 ```
 
-During development you can run `npm start` to launch the dev server.
+This is triggered in a safe way via `request->onDisconnect(...)` to ensure the HTTP response is completed before reboot.
+
 
 ## License
 

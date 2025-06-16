@@ -16,7 +16,7 @@ BoardLED boardLED;
 OtaHandler otaHandler;
 PushButton boardButton;
 WiFiManager wifiManager;
-WebServerHandler webServerHandler(otaHandler);
+WebServerHandler webServerHandler;
 AlexaIntegration alexaIntegration(output);
 BleManager bleManager(output, wifiManager, alexaIntegration, webServerHandler);
 
@@ -28,11 +28,11 @@ void setup()
     boardLED.begin();
     output.begin(webServerHandler);
     wifiManager.begin();
-    otaHandler.begin(webServerHandler.getWebServer());
-    webServerHandler.begin();
+    otaHandler.begin(webServerHandler);
     wifiManager.setGotIpCallback([]()
     {
         alexaIntegration.begin(webServerHandler);
+        webServerHandler.begin();
     });
 
     if (const auto credentials = WiFiManager::loadCredentials())
@@ -110,10 +110,12 @@ void loop()
     bleManager.handle();
 
     boardLED.handle(
+        now,
         bleManager.isInitialised(),
         bleManager.isClientConnected(),
         wifiManager.getScanStatus(),
-        wifiManager.getStatus()
+        wifiManager.getStatus(),
+        otaHandler.getState() == OtaHandler::UpdateState::Started
     );
 
     if (bleManager.isClientConnected())

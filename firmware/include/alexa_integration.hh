@@ -32,8 +32,8 @@ struct AlexaIntegrationSettings
 
 class AlexaIntegration
 {
-    Espalexa espalexa;
     Output& output;
+    Espalexa espalexa;
 
     AlexaIntegrationSettings settings;
 
@@ -175,6 +175,8 @@ private:
                 settings.rDeviceName,
                 [this](const uint8_t brightness, const uint32_t color)
                 {
+                    ESP_LOGI("AlexaIntegration", "Brightness: %u, Color: 0x%06X",
+                             brightness, color);
                     uint8_t r = (color >> 16) & 0xFF;
                     uint8_t g = (color >> 8) & 0xFF;
                     uint8_t b = color & 0xFF;
@@ -265,7 +267,7 @@ private:
         ESP_LOGI("AlexaIntegration", "Adding device: %s", name);
         return std::make_unique<EspalexaDevice>(
             name,
-            [this, color](const uint8_t brightness)
+            [this, color, name](const uint8_t brightness)
             {
                 ESP_LOGI("AlexaIntegration", "Received %s command: brightness=%d", name, brightness);
                 output.update(color, brightness);

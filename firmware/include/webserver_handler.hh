@@ -1,13 +1,19 @@
 #pragma once
 
-#include <nvs_flash.h>
 #include "ESPAsyncWebServer.h"
-#include "ota_handler.hh"
-#include "http_credentials.hh"
+
+struct HttpCredentials
+{
+    static constexpr auto MAX_USERNAME_LENGTH = 32;
+    static constexpr auto MAX_PASSWORD_LENGTH = 32;
+
+    char username[MAX_USERNAME_LENGTH + 1] = {};
+    char password[MAX_PASSWORD_LENGTH + 1] = {};
+};
 
 class WebServerHandler
 {
-    static constexpr auto PREFERENCES_NAME = "ota-credentials";
+    static constexpr auto PREFERENCES_NAME = "http";
     static constexpr auto PREFERENCES_USERNAME_KEY = "u";
     static constexpr auto PREFERENCES_PASSWORD_KEY = "p";
 
@@ -15,13 +21,8 @@ class WebServerHandler
     AsyncWebSocketMessageHandler wsHandler;
     AsyncWebSocket ws = AsyncWebSocket("/ws", wsHandler.eventHandler());
     AsyncAuthenticationMiddleware basicAuth;
-    OtaHandler& otaHandler;
 
 public:
-    explicit WebServerHandler(OtaHandler& otaHandler): otaHandler(otaHandler)
-    {
-    }
-
     void begin()
     {
         webServer.serveStatic("/", LittleFS, "/")
@@ -43,6 +44,11 @@ public:
     [[nodiscard]] AsyncWebServer* getWebServer()
     {
         return &webServer;
+    }
+
+    [[nodiscard]] AsyncAuthenticationMiddleware& getAuthenticationMiddleware()
+    {
+        return basicAuth;
     }
 
     void onNotFound(ArRequestHandlerFunction fn)
@@ -109,7 +115,6 @@ private:
         basicAuth.setAuthFailureMessage("Authentication failed");
         basicAuth.setAuthType(AsyncAuthType::AUTH_BASIC);
         basicAuth.generateHash();
-        otaHandler.updateServerCredentials(credentials);
     }
 
     [[nodiscard]] static String generateRandomPassword()
