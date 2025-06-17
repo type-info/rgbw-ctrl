@@ -16,9 +16,9 @@ public:
         Failed
     };
 
-    void begin(WebServerHandler& webServerHandler)
+    void begin(WebServerHandler& webServerHandler, BleManager* bleManager)
     {
-        const auto handler = new AsyncOtaWebHandler(webServerHandler.getAuthenticationMiddleware());
+        const auto handler = new AsyncOtaWebHandler(webServerHandler.getAuthenticationMiddleware(), bleManager);
         webServerHandler.getWebServer()->addHandler(handler);
         otaWebHandler = handler;
     }
@@ -52,9 +52,11 @@ private:
         static constexpr auto MSG_UPLOAD_INCOMPLETE = "OTA upload not completed";
         static constexpr auto MSG_ALREADY_FINALIZED = "OTA update already finalized";
         static constexpr auto MSG_SUCCESS = "OTA update successful";
+        static constexpr auto MSG_BLUETOOTH_STARTED = "Bluetooth enabled, cannot perform OTA update";
 
         std::function<void(UpdateState state, uint8_t percentage)> onProgressCallback;
         const AsyncAuthenticationMiddleware& asyncAuthenticationMiddleware;
+        BleManager* bleManager = nullptr;
 
         mutable std::optional<String> updateError;
         mutable UpdateState updateState = UpdateState::Idle;
@@ -75,6 +77,12 @@ private:
             if (updateState == UpdateState::Started)
             {
                 request->setAttribute(ATTR_DOUBLE_REQUEST, true);
+                return true;
+            }
+
+            if (bleManager != nullptr && bleManager->isInitialised())
+            {
+                updateError = MSG_BLUETOOTH_STARTED;
                 return true;
             }
 
@@ -254,8 +262,8 @@ private:
         }
 
     public:
-        explicit AsyncOtaWebHandler(const AsyncAuthenticationMiddleware& async_authentication_middleware)
-            : asyncAuthenticationMiddleware(async_authentication_middleware)
+        explicit AsyncOtaWebHandler(const AsyncAuthenticationMiddleware& async_authentication_middleware, BleManager* bleManager)
+            : asyncAuthenticationMiddleware(async_authentication_middleware), bleManager(bleManager)
         {
         }
 

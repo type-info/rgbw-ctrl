@@ -28,7 +28,7 @@ void setup()
     boardLED.begin();
     output.begin(webServerHandler);
     wifiManager.begin();
-    otaHandler.begin(webServerHandler);
+    otaHandler.begin(webServerHandler, &bleManager);
     wifiManager.setGotIpCallback([]()
     {
         alexaIntegration.begin(webServerHandler);
@@ -59,29 +59,29 @@ void setup()
     LittleFS.begin(true);
     webServerHandler.on("/restart", HTTP_GET, [](AsyncWebServerRequest* request)
     {
-        asyncCall([]()
+        request->onDisconnect([]()
         {
             bleManager.stop();
             esp_restart();
-        }, 1024, 300);
+        });
         request->send(200, "text/plain", "Restarting...");
     });
     webServerHandler.on("/reset", HTTP_GET, [](AsyncWebServerRequest* request)
     {
-        asyncCall([]()
+        request->onDisconnect([]()
         {
             nvs_flash_erase();
             delay(300);
             bleManager.stop();
             esp_restart();
-        }, 2048, 300);
+        });
         request->send(200, "text/plain", "Resetting to factory defaults...");
     });
 
     webServerHandler.on("/bluetooth", HTTP_GET, [](AsyncWebServerRequest* request)
     {
         auto state = request->getParam("state")->value() == "on";
-        asyncCall([state]()
+        request->onDisconnect([state]()
         {
             if (state == true)
             {
@@ -92,7 +92,7 @@ void setup()
             {
                 bleManager.stop();
             }
-        }, 4096, 50);
+        });
         if (state)
             request->send(200, "text/plain", "Bluetooth enabled");
         else

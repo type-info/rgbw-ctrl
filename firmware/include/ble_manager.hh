@@ -4,7 +4,6 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-#include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <cstring>
 #include <string>
