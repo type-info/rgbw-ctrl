@@ -8,8 +8,7 @@
 #include "output.hh"
 #include "push_button.hh"
 #include "ota_handler.hh"
-
-constexpr unsigned long BLE_TIMEOUT_MS = 15000;
+#include "websocket_handler.hh"
 
 Output output;
 BoardLED boardLED;
@@ -18,9 +17,16 @@ PushButton boardButton;
 WiFiManager wifiManager;
 WebServerHandler webServerHandler;
 AlexaIntegration alexaIntegration(output);
-BleManager bleManager(output, wifiManager, alexaIntegration, webServerHandler);
-
-volatile unsigned long lastClientConnectedAt = 0;
+BleManager bleManager(output,
+                      wifiManager,
+                      alexaIntegration,
+                      webServerHandler);
+WebSocketHandler webSocketHandler(output,
+                                  otaHandler,
+                                  wifiManager,
+                                  webServerHandler,
+                                  alexaIntegration,
+                                  bleManager);
 
 void setup()
 {
@@ -33,21 +39,16 @@ void setup()
     {
         alexaIntegration.begin(webServerHandler);
         webServerHandler.begin(alexaIntegration.createAsyncWebHandler());
+        webSocketHandler.begin(webServerHandler.getWebSocket());
     });
 
     if (const auto credentials = WiFiManager::loadCredentials())
-    {
         wifiManager.connect(credentials.value());
-        lastClientConnectedAt = millis();
-    }
     else
-    {
         bleManager.start();
-    }
 
     boardButton.setLongPressCallback([]()
     {
-        lastClientConnectedAt = millis();
         bleManager.start();
     });
 
@@ -84,14 +85,9 @@ void setup()
         request->onDisconnect([state]()
         {
             if (state == true)
-            {
-                lastClientConnectedAt = millis();
                 bleManager.start();
-            }
             else
-            {
                 bleManager.stop();
-            }
         });
         if (state)
             request->send(200, "text/plain", "Bluetooth enabled");
@@ -107,7 +103,7 @@ void loop()
     boardButton.handle(now);
     alexaIntegration.handle();
     webServerHandler.handle();
-    bleManager.handle();
+    bleManager.handle(now);
 
     boardLED.handle(
         now,
@@ -117,14 +113,4 @@ void loop()
         wifiManager.getStatus(),
         otaHandler.getState() == OtaHandler::UpdateState::Started
     );
-
-    if (bleManager.isClientConnected())
-    {
-        lastClientConnectedAt = now;
-    }
-    if (lastClientConnectedAt != 0 && now - lastClientConnectedAt > BLE_TIMEOUT_MS)
-    {
-        // this will restart esp, since there's no way to restart ble
-        bleManager.stop();
-    }
 }

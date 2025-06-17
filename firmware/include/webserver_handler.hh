@@ -41,6 +41,11 @@ public:
         ws.cleanupClients();
     }
 
+    [[nodiscard]] AsyncWebSocketMessageHandler* getWebSocket()
+    {
+        return &wsHandler;
+    }
+
     [[nodiscard]] AsyncWebServer* getWebServer()
     {
         return &webServer;

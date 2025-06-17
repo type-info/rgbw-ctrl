@@ -59,7 +59,7 @@ private:
         BleManager* bleManager = nullptr;
 
         mutable std::optional<String> updateError;
-        mutable UpdateState updateState = UpdateState::Idle;
+        mutable volatile UpdateState updateState = UpdateState::Idle;
         mutable bool uploadCompleted = false;
         mutable size_t totalBytesExpected = 0;
         mutable size_t totalBytesReceived = 0;

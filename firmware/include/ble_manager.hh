@@ -13,6 +13,11 @@
 #include "wifi_manager.hh"
 #include "webserver_handler.hh"
 
+enum class BleStatus :uint8_t
+{
+    OFF,
+    ON
+};
 
 class BleManager
 {
@@ -37,6 +42,9 @@ class BleManager
     };
 
     static constexpr auto LOG_TAG = "Network";
+    static constexpr auto BLE_TIMEOUT_MS = 15000;
+
+    unsigned long bluetoothTimeout = 0;
 
     Output& output;
     WiFiManager& wifiManager;
@@ -72,6 +80,7 @@ public:
 
     void start()
     {
+        bluetoothTimeout = millis() + BLE_TIMEOUT_MS;
         if (server != nullptr) return;
         wifiManager.setDetailsChangedCallback([this](WiFiDetails wiFiScanResult)
         {
@@ -122,10 +131,9 @@ public:
         ESP_LOGI(LOG_TAG, "BLE advertising started with device name: %s", wifiManager.getDeviceName());
     }
 
-    void handle() const
+    void handle(const unsigned long now)
     {
         if (!deviceHeapCharacteristic) return;
-        const auto now = millis();
         static auto lastSend = now;
         if (now - lastSend >= 1000)
         {
@@ -133,6 +141,14 @@ public:
             auto heapSize = ESP.getFreeHeap();
             deviceHeapCharacteristic->setValue(reinterpret_cast<uint8_t*>(&heapSize), sizeof(heapSize));
             deviceHeapCharacteristic->notify();
+        }
+        if (this->isClientConnected())
+        {
+            bluetoothTimeout = now + BLE_TIMEOUT_MS;
+        } else if (now > bluetoothTimeout)
+        {
+            ESP_LOGW(LOG_TAG, "No BLE client connected for %d ms, stopping BLE server.", BLE_TIMEOUT_MS);
+            this->stop();
         }
     }
 

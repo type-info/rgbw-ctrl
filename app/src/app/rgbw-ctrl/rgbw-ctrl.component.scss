@@ -112,34 +112,34 @@ mat-form-field {
 
 .red-slider {
   ::ng-deep .mdc-slider__track--active_fill {
-    border-color: red !important;
+    border-color: rgb(255, 0, 0) !important;
   }
 
   ::ng-deep .mdc-slider__thumb-knob {
-    background-color: red !important;
-    border-color: red !important;
+    background-color: rgb(255, 0, 0) !important;
+    border-color: rgb(255, 0, 0) !important;
   }
 }
 
 .green-slider {
   ::ng-deep .mdc-slider__track--active_fill {
-    border-color: green !important;
+    border-color: rgb(0, 255, 0) !important;
   }
 
   ::ng-deep .mdc-slider__thumb-knob {
-    background-color: green !important;
-    border-color: green !important;
+    background-color: rgb(0, 255, 0) !important;
+    border-color: rgb(0, 255, 0) !important;
   }
 }
 
 .blue-slider {
   ::ng-deep .mdc-slider__track--active_fill {
-    border-color: blue !important;
+    border-color: rgb(0, 0, 255) !important;
   }
 
   ::ng-deep .mdc-slider__thumb-knob {
-    background-color: blue !important;
-    border-color: blue !important;
+    background-color: rgb(0, 0, 255) !important;
+    border-color: rgb(0, 0, 255) !important;
   }
 }
 

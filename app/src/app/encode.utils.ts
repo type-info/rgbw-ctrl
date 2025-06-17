@@ -1,21 +1,23 @@
 import {
-  SimpleWiFiConnectionCredentials,
-  EAPWiFiConnectionCredentials,
-  WiFiConnectionDetails,
-  WIFI_MAX_PASSWORD_LENGTH,
-  WIFI_MAX_EAP_IDENTITY_LENGTH,
-  WIFI_MAX_EAP_USERNAME_LENGTH,
-  WIFI_MAX_EAP_PASSWORD_LENGTH,
-  isEnterprise,
-  WIFI_CONNECTION_DETAILS_LENGTH,
-  WIFI_SSID_MAX_LENGTH
-} from './wifi.model';
-import {
   ALEXA_MAX_DEVICE_NAME_LENGTH,
   ALEXA_SETTINGS_TOTAL_LENGTH,
   AlexaIntegrationSettings
 } from './alexa-integration-settings.model';
-import {MAX_HTTP_PASSWORD_LENGTH, MAX_HTTP_USERNAME_LENGTH, HttpCredentials} from './http-credentials.model';
+import {BleStatus} from './ble.mode';
+import {HttpCredentials, MAX_HTTP_PASSWORD_LENGTH, MAX_HTTP_USERNAME_LENGTH} from './http-credentials.model';
+import {WebSocketMessageType} from './websocket.message';
+import {
+  EAPWiFiConnectionCredentials,
+  isEnterprise,
+  SimpleWiFiConnectionCredentials,
+  WIFI_CONNECTION_DETAILS_LENGTH,
+  WIFI_MAX_EAP_IDENTITY_LENGTH,
+  WIFI_MAX_EAP_PASSWORD_LENGTH,
+  WIFI_MAX_EAP_USERNAME_LENGTH,
+  WIFI_MAX_PASSWORD_LENGTH,
+  WIFI_SSID_MAX_LENGTH,
+  WiFiConnectionDetails
+} from './wifi.model';
 
 export const textEncoder = new TextEncoder();
 
@@ -90,4 +92,63 @@ export function encodeHttpCredentials(credentials: HttpCredentials): Uint8Array 
   writer.writeCString(credentials.username, MAX_HTTP_USERNAME_LENGTH);
   writer.writeCString(credentials.password, MAX_HTTP_PASSWORD_LENGTH);
   return buffer;
+}
+
+export function encodeColorMessage(values: [number, number, number, number]): Uint8Array {
+  const buffer = new Uint8Array(1 + 4);
+  const writer = new BufferWriter(buffer);
+  writer.writeUint8(WebSocketMessageType.ON_COLOR);
+  values.forEach(v => writer.writeUint8(v));
+  return buffer;
+}
+
+export function encodeHttpCredentialsMessage(credentials: HttpCredentials): Uint8Array {
+  const credentialsBuffer = encodeHttpCredentials(credentials);
+  const buffer = new Uint8Array(1 + credentialsBuffer.length);
+  buffer[0] = WebSocketMessageType.ON_HTTP_CREDENTIALS;
+  buffer.set(credentialsBuffer, 1);
+  return buffer;
+}
+
+export function encodeDeviceNameMessage(deviceName: string, maxLength: number): Uint8Array {
+  const buffer = new Uint8Array(1 + maxLength + 1);
+  const writer = new BufferWriter(buffer);
+  writer.writeUint8(WebSocketMessageType.ON_DEVICE_NAME);
+  writer.writeCString(deviceName, maxLength);
+  return buffer;
+}
+
+export function encodeWiFiConnectionDetailsMessage(details: WiFiConnectionDetails): Uint8Array {
+  const detailsBuffer = encodeWiFiConnectionDetails(details);
+  const buffer = new Uint8Array(1 + detailsBuffer.length);
+  buffer[0] = WebSocketMessageType.ON_WIFI_DETAILS;
+  buffer.set(detailsBuffer, 1);
+  return buffer;
+}
+
+export function encodeAlexaIntegrationSettingsMessage(settings: AlexaIntegrationSettings): Uint8Array {
+  const settingsBuffer = encodeAlexaIntegrationSettings(settings);
+  const buffer = new Uint8Array(1 + settingsBuffer.length);
+  buffer[0] = WebSocketMessageType.ON_ALEXA_INTEGRATION_SETTINGS;
+  buffer.set(settingsBuffer, 1);
+  return buffer;
+}
+
+export function encodeBleStatusMessage(status: BleStatus): Uint8Array {
+  const buffer = new Uint8Array(2);
+  buffer[0] = WebSocketMessageType.ON_BLE_STATUS;
+  buffer[1] = status;
+  return buffer;
+}
+
+export function encodeHeapMessage(): Uint8Array {
+  return new Uint8Array([WebSocketMessageType.ON_HEAP]);
+}
+
+export function encodeWiFiScanStatusMessage(): Uint8Array {
+  return new Uint8Array([WebSocketMessageType.ON_WIFI_SCAN_STATUS]);
+}
+
+export function encodeOtaProgressMessage(): Uint8Array {
+  return new Uint8Array([WebSocketMessageType.ON_OTA_PROGRESS]);
 }

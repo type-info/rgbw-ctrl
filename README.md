@@ -1,6 +1,6 @@
 # RGBW Controller
 
-This repository provides the firmware for an ESP32 based RGBW LED controller together with an Angular web application for configuration. The device exposes Wi‑Fi and Bluetooth Low Energy services so it can be configured directly from a browser via Web Bluetooth. It also supports Alexa integration and OTA firmware updates.
+This repository provides the firmware for an ESP32 based RGBW LED controller together with an Angular web application for configuration. The device exposes Wi‑Fi and Bluetooth Low Energy services so it can be configured directly from a browser via Web Bluetooth. It also supports Alexa integration, OTA firmware updates, and real-time communication via WebSocket.
 
 ## BOOT Button Behavior
 The BOOT button on the board has multiple context-sensitive behaviors:
@@ -41,6 +41,26 @@ The `BoardLED` class provides a simple, visual representation of system status u
 | 📶 Wi-Fi scan running   | 🟡 Yellow | Fading   | Scanning for available Wi-Fi networks   |
 | 🌐 Wi-Fi connected      | 🟢 Green  | Steady   | Device is connected to a Wi-Fi network  |
 | ❌ Wi-Fi disconnected   | 🔴 Red    | Steady   | No Wi-Fi connection available           |
+
+## WebSocket Features
+
+This firmware includes a WebSocket handler that supports real-time, bidirectional communication between the device and the front-end interface.
+
+### 🔌 Supported WebSocket Message Types
+
+| Type                          | Description                                 |
+|------------------------------|---------------------------------------------|
+| `ON_COLOR`                   | Update the LED RGBA values                  |
+| `ON_BLE_STATUS`              | Toggle Bluetooth ON/OFF                     |
+| `ON_DEVICE_NAME`             | Set the device name                         |
+| `ON_HTTP_CREDENTIALS`        | Update HTTP basic auth credentials         |
+| `ON_WIFI_STATUS`             | Connect to a Wi-Fi network                 |
+| `ON_WIFI_SCAN_STATUS`        | Trigger a Wi-Fi scan                        |
+| `ON_WIFI_DETAILS`            | Reserved for future                         |
+| `ON_OTA_PROGRESS`            | Reserved for future                         |
+| `ON_ALEXA_INTEGRATION_SETTINGS` | Update Alexa integration preferences     |
+
+Messages are binary-encoded and processed asynchronously to prevent blocking the main execution loop. RGBW sliders and Bluetooth control UI are bound directly to these messages via a browser-based WebSocket connection.
 
 ## OTA Update via Web Server
 
@@ -97,6 +117,30 @@ ESP.restart();
 
 This is triggered in a safe way via `request->onDisconnect(...)` to ensure the HTTP response is completed before reboot.
 
+## ⚙️ Firmware Build Process
+
+The web interface and firmware are bundled and compressed into deployable assets via Node.js tooling.
+
+1. **Build firmware frontend**
+
+```bash
+npm run build:firmware
+```
+
+2. **Run compression and integration**
+
+A Node.js script called `filesystem.build.mjs` performs the following:
+
+- Calls `npm run build:firmware` inside the `../app` folder
+- Compresses all frontend output files (excluding `.ts`/`.tsx`) from `../app/src/device-home`
+- Also compresses `index.js` and `index.js.map` from `./data`
+- Outputs everything as `.gz` in the `./data` folder
+
+```bash
+node filesystem.build.mjs
+```
+
+This ensures that all assets are ready to be served directly from the ESP32's LittleFS partition.
 
 ## License
 
