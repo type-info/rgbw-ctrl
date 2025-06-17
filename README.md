@@ -2,6 +2,25 @@
 
 This repository provides the firmware for an ESP32 based RGBW LED controller together with an Angular web application for configuration. The device exposes Wi‑Fi and Bluetooth Low Energy services so it can be configured directly from a browser via Web Bluetooth. It also supports Alexa integration and OTA firmware updates.
 
+## BOOT Button Behavior
+The BOOT button on the board has multiple context-sensitive behaviors:
+
+Short Press (< 2.5s)
+🟢 Toggles the board's lights on or off, depending on the current state.
+
+Long Press (> 2.5s)
+🔵 Enables Bluetooth, if it’s not already active.
+🔄 If Bluetooth is already on, it simply resets its 15s auto-shutdown timer.
+
+⏱️ Bluetooth automatically disables after 15 seconds if no connection is established.
+
+Firmware Update Mode
+🛠️ To enter UART firmware update mode:
+
+Hold the BOOT button,
+
+Then press RESET.
+
 ## Board LED Status Indicator
 
 The `BoardLED` class provides a simple, visual representation of system status using the onboard RGB LED. It conveys Bluetooth, Wi-Fi, and OTA update states using colors and effects (steady or fading).

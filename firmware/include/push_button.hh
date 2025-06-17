@@ -42,11 +42,12 @@ public:
         shortPressCallback = callback;
     }
 
-    void handle(unsigned long now)
+    void handle(const unsigned long now)
     {
-        bool currentState = digitalRead(pin);
+        const bool currentState = digitalRead(pin);
 
-        if (currentState != lastState && (now - lastChange < debounceDelayMs)) {
+        if (currentState != lastState && (now - lastChange < debounceDelayMs))
+        {
             // Ignore bounce
             return;
         }
@@ -70,8 +71,8 @@ public:
         else if (lastState == LOW && currentState == HIGH)
         {
             // Button just released
-            unsigned long pressDuration = now - lastDown;
-            if (!longPressHandled && pressDuration < longPressThresholdMs)
+            if (const auto pressDuration = now - lastDown;
+                !longPressHandled && pressDuration < longPressThresholdMs)
             {
                 maybeInvoke(shortPressCallback);
             }
