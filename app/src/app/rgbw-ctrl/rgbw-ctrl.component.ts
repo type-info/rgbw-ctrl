@@ -22,7 +22,7 @@ import {MatInputModule} from '@angular/material/input';
 import {
   decodeAlexaIntegrationSettings,
   decodeCString,
-  decodeOtaCredentials,
+  decodeHttpCredentials,
   decodeWiFiDetails,
   decodeWiFiScanResult,
   decodeWiFiScanStatus,
@@ -30,7 +30,7 @@ import {
 } from '../decode.utils';
 import {
   encodeAlexaIntegrationSettings,
-  encodeOtaCredentials,
+  encodeHttpCredentials,
   encodeWiFiConnectionDetails,
   textEncoder
 } from '../encode.utils';
@@ -49,7 +49,7 @@ import {
 } from './enterprise-wi-fi-connect-dialog/enterprise-wi-fi-connect-dialog.component';
 import {SimpleWiFiConnectDialogComponent} from './simple-wi-fi-connect-dialog/simple-wi-fi-connect-dialog.component';
 import {CustomWiFiConnectDialogComponent} from './custom-wi-fi-connect-dialog/custom-wi-fi-connect-dialog.component';
-import {MAX_OTA_PASSWORD_LENGTH, MAX_OTA_USERNAME_LENGTH} from '../ota.model';
+import {MAX_HTTP_PASSWORD_LENGTH, MAX_HTTP_USERNAME_LENGTH} from '../http-credentials.model';
 import {KilobytesPipe} from '../kb.pipe';
 import {MatSliderModule} from '@angular/material/slider';
 import {ConfirmAlexaRestart} from '../yes-no-dialog/confirm-alexa-restart.component';
@@ -60,7 +60,7 @@ const DEVICE_DETAILS_SERVICE = "12345678-1234-1234-1234-1234567890ac";
 const DEVICE_RESTART_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0000";
 const DEVICE_NAME_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001";
 const FIRMWARE_VERSION_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002";
-const OTA_CREDENTIALS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
+const HTTP_CREDENTIALS_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003";
 const DEVICE_HEAP_CHARACTERISTIC = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0004";
 
 const WIFI_SERVICE = "12345678-1234-1234-1234-1234567890ab";
@@ -105,8 +105,8 @@ export class RgbwCtrlComponent implements OnDestroy {
   readonly WiFiStatus = WiFiStatus;
   readonly AlexaIntegrationMode = AlexaIntegrationMode;
   readonly ALEXA_MAX_DEVICE_NAME_LENGTH = ALEXA_MAX_DEVICE_NAME_LENGTH - 1;
-  readonly MAX_OTA_USERNAME_LENGTH = MAX_OTA_USERNAME_LENGTH;
-  readonly MAX_OTA_PASSWORD_LENGTH = MAX_OTA_PASSWORD_LENGTH;
+  readonly MAX_HTTP_USERNAME_LENGTH = MAX_HTTP_USERNAME_LENGTH;
+  readonly MAX_HTTP_PASSWORD_LENGTH = MAX_HTTP_PASSWORD_LENGTH;
 
   private colorSubscription: Subscription;
   alexaIntegrationModes = [
@@ -122,7 +122,7 @@ export class RgbwCtrlComponent implements OnDestroy {
   private deviceRestartCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private deviceNameCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private firmwareVersionCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
-  private otaCredentialsCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+  private httpCredentialsCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private deviceHeapCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 
   private wifiService: BluetoothRemoteGATTService | null = null;
@@ -137,7 +137,7 @@ export class RgbwCtrlComponent implements OnDestroy {
 
   initialized: boolean = false;
   loadingAlexa: boolean = false;
-  loadingOtaCredentials = false;
+  loadingHttpCredentials = false;
   readingAlexaColor = false;
 
   firmwareVersion: string | null = null;
@@ -184,14 +184,14 @@ export class RgbwCtrlComponent implements OnDestroy {
     }),
   });
 
-  otaCredentialsForm = new FormGroup({
+  httpCredentialsForm = new FormGroup({
     username: new FormControl<string>('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(MAX_OTA_USERNAME_LENGTH)]
+      validators: [Validators.required, Validators.maxLength(MAX_HTTP_USERNAME_LENGTH)]
     }),
     password: new FormControl<string>('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.maxLength(MAX_OTA_PASSWORD_LENGTH)]
+      validators: [Validators.required, Validators.maxLength(MAX_HTTP_PASSWORD_LENGTH)]
     }),
   });
 
@@ -266,7 +266,7 @@ export class RgbwCtrlComponent implements OnDestroy {
     this.wifiScanResult = [];
 
     this.loadingAlexa = false;
-    this.loadingOtaCredentials = false;
+    this.loadingHttpCredentials = false;
     this.readingAlexaColor = false;
 
     this.alexaIntegrationForm.reset();
@@ -298,7 +298,7 @@ export class RgbwCtrlComponent implements OnDestroy {
 
       await this.readDeviceName();
       await this.readFirmwareVersion();
-      await this.readOtaCredentials();
+      await this.readHttpCredentials();
       await this.readWiFiStatus();
       await this.readWiFiDetails();
       await this.readWiFiScanStatus();
@@ -410,25 +410,25 @@ export class RgbwCtrlComponent implements OnDestroy {
     }
   }
 
-  async loadOtaCredentials() {
-    this.loadingOtaCredentials = true;
-    await this.readOtaCredentials();
-    this.loadingOtaCredentials = false;
+  async loadHttpCredentials() {
+    this.loadingHttpCredentials = true;
+    await this.readHttpCredentials();
+    this.loadingHttpCredentials = false;
   }
 
-  async applyOtaCredentials() {
-    if (this.otaCredentialsForm.invalid || !this.connected) {
+  async applyHttpCredentials() {
+    if (this.httpCredentialsForm.invalid || !this.connected) {
       return;
     }
-    const credentials = this.otaCredentialsForm.getRawValue();
-    const payload = encodeOtaCredentials(credentials);
+    const credentials = this.httpCredentialsForm.getRawValue();
+    const payload = encodeHttpCredentials(credentials);
     let loading = this.matDialog.open(LoadingComponent, {disableClose: true});
     try {
-      await this.otaCredentialsCharacteristic!.writeValue(payload);
-      this.snackBar.open('OTA credentials updated', 'Close', {duration: 3000});
+      await this.httpCredentialsCharacteristic!.writeValue(payload);
+      this.snackBar.open('HTTP credentials updated', 'Close', {duration: 3000});
     } catch (e) {
-      console.error('Failed to update OTA credentials:', e);
-      this.snackBar.open('Failed to update OTA credentials', 'Close', {duration: 3000});
+      console.error('Failed to update HTTP credentials:', e);
+      this.snackBar.open('Failed to update HTTP credentials', 'Close', {duration: 3000});
     } finally {
       loading.close();
     }
@@ -459,7 +459,7 @@ export class RgbwCtrlComponent implements OnDestroy {
 
     this.deviceRestartCharacteristic = await this.deviceNameService.getCharacteristic(DEVICE_RESTART_CHARACTERISTIC);
     this.firmwareVersionCharacteristic = await this.deviceNameService.getCharacteristic(FIRMWARE_VERSION_CHARACTERISTIC);
-    this.otaCredentialsCharacteristic = await this.deviceNameService.getCharacteristic(OTA_CREDENTIALS_CHARACTERISTIC);
+    this.httpCredentialsCharacteristic = await this.deviceNameService.getCharacteristic(HTTP_CREDENTIALS_CHARACTERISTIC);
 
     this.deviceNameCharacteristic = await this.deviceNameService.getCharacteristic(DEVICE_NAME_CHARACTERISTIC);
     this.deviceNameCharacteristic.addEventListener('characteristicvaluechanged', (ev: any) => this.deviceNameChanged(ev.target.value));
@@ -527,14 +527,14 @@ export class RgbwCtrlComponent implements OnDestroy {
     }, {emitEvent: false});
   }
 
-  private otaCredentialsChanged(view: DataView) {
-    const credentials = decodeOtaCredentials(new Uint8Array(view.buffer));
-    this.otaCredentialsForm.reset(credentials);
+  private httpCredentialsChanged(view: DataView) {
+    const credentials = decodeHttpCredentials(new Uint8Array(view.buffer));
+    this.httpCredentialsForm.reset(credentials);
   }
 
-  private async readOtaCredentials() {
-    const value = await this.otaCredentialsCharacteristic!.readValue();
-    this.otaCredentialsChanged(value);
+  private async readHttpCredentials() {
+    const value = await this.httpCredentialsCharacteristic!.readValue();
+    this.httpCredentialsChanged(value);
   }
 
   private async readDeviceName() {

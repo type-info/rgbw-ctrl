@@ -15,7 +15,7 @@ import {
   ALEXA_SETTINGS_TOTAL_LENGTH,
   AlexaIntegrationSettings
 } from './alexa-integration-settings.model';
-import {MAX_OTA_PASSWORD_LENGTH, MAX_OTA_USERNAME_LENGTH, OtaCredentials} from './ota.model';
+import {MAX_HTTP_PASSWORD_LENGTH, MAX_HTTP_USERNAME_LENGTH, HttpCredentials} from './http-credentials.model';
 
 export const textEncoder = new TextEncoder();
 
@@ -84,10 +84,10 @@ export function encodeAlexaIntegrationSettings(settings: AlexaIntegrationSetting
   return buffer;
 }
 
-export function encodeOtaCredentials(credentials: OtaCredentials): Uint8Array {
-  const buffer = new Uint8Array(MAX_OTA_USERNAME_LENGTH + MAX_OTA_PASSWORD_LENGTH + 2); // +2 for null terminators
+export function encodeHttpCredentials(credentials: HttpCredentials): Uint8Array {
+  const buffer = new Uint8Array(MAX_HTTP_USERNAME_LENGTH + MAX_HTTP_PASSWORD_LENGTH + 2); // +2 for null terminators
   const writer = new BufferWriter(buffer);
-  writer.writeCString(credentials.username, MAX_OTA_USERNAME_LENGTH);
-  writer.writeCString(credentials.password, MAX_OTA_PASSWORD_LENGTH);
+  writer.writeCString(credentials.username, MAX_HTTP_USERNAME_LENGTH);
+  writer.writeCString(credentials.password, MAX_HTTP_PASSWORD_LENGTH);
   return buffer;
 }

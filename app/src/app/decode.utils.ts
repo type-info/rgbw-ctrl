@@ -16,7 +16,7 @@ import {
   WiFiStatus
 } from './wifi.model';
 import {ALEXA_MAX_DEVICE_NAME_LENGTH, AlexaIntegrationSettings} from './alexa-integration-settings.model';
-import {OtaCredentials} from './ota.model';
+import {HttpCredentials} from './http-credentials.model';
 
 export const textDecoder = new TextDecoder('utf-8');
 
@@ -135,7 +135,7 @@ export function decodeAlexaIntegrationSettings(buffer: Uint8Array): AlexaIntegra
   return {integrationMode, rDeviceName, gDeviceName, bDeviceName, wDeviceName};
 }
 
-export function decodeOtaCredentials(buffer: Uint8Array): OtaCredentials {
+export function decodeHttpCredentials(buffer: Uint8Array): HttpCredentials {
   const reader = new BufferReader(buffer);
   const username = reader.readCString(WIFI_SSID_MAX_LENGTH + 1);
   const password = reader.readCString(WIFI_MAX_PASSWORD_LENGTH + 1);
