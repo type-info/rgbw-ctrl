@@ -100,7 +100,7 @@ private:
                 return true;
             }
 
-            if (bleManager != nullptr && bleManager->isInitialised())
+            if (bleManager != nullptr && bleManager->getStatus() != BleStatus::OFF)
             {
                 setUpdateError(MSG_BLUETOOTH_STARTED);
                 return true;

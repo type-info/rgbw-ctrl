@@ -5,11 +5,9 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <freertos/FreeRTOS.h>
-#include <cstring>
 #include <string>
 
 #include "alexa_integration.hh"
-#include "AsyncJson.h"
 #include "async_call.hh"
 #include "version.hh"
 #include "wifi_manager.hh"
@@ -73,6 +71,8 @@ class BleManager
     BLECharacteristic* alexaCharacteristic = nullptr;
     BLECharacteristic* alexaColorCharacteristic = nullptr;
 
+    std::function<void(BleStatus)> bleStatusCallback;
+
 public:
     explicit BleManager(Output& output, WiFiManager& wifiManager, AlexaIntegration& alexaIntegration,
                         WebServerHandler& webServerHandler)
@@ -131,6 +131,7 @@ public:
 
         setupBle();
         this->server->getAdvertising()->start();
+        if (bleStatusCallback) bleStatusCallback(BleStatus::ADVERTISING);
         ESP_LOGI(LOG_TAG, "BLE advertising started with device name: %s", wifiManager.getDeviceName());
     }
 
@@ -145,7 +146,7 @@ public:
             deviceHeapCharacteristic->setValue(reinterpret_cast<uint8_t*>(&heapSize), sizeof(heapSize));
             deviceHeapCharacteristic->notify();
         }
-        if (this->isClientConnected())
+        if (this->getStatus() == BleStatus::CONNECTED)
         {
             bluetoothTimeout = now + BLE_TIMEOUT_MS;
         }
@@ -160,31 +161,22 @@ public:
     {
         if (server == nullptr) return;
         server->getAdvertising()->stop();
-        if (this->isClientConnected())
+        if (this->server->getConnectedCount() > 0)
         {
             server->disconnect(0);
+            if (bleStatusCallback) bleStatusCallback(BleStatus::OFF);
             delay(100); // Allow client disconnect to propagate
         }
         esp_restart();
     }
 
-    [[nodiscard]] bool isClientConnected() const
-    {
-        return this->server != nullptr && this->server->getConnectedCount() > 0;
-    }
-
-    [[nodiscard]] bool isInitialised() const
-    {
-        return this->server != nullptr;
-    }
-
     [[nodiscard]] BleStatus getStatus() const
     {
-        if (isClientConnected())
+        if (this->server == nullptr)
+            return BleStatus::OFF;
+        if (this->server->getConnectedCount() > 0)
             return BleStatus::CONNECTED;
-        if (isInitialised())
-            return BleStatus::ADVERTISING;
-        return BleStatus::OFF;
+        return BleStatus::ADVERTISING;
     }
 
     [[nodiscard]] const char* getStatusString() const
@@ -207,12 +199,21 @@ public:
         to["status"] = getStatusString();
     }
 
+    void setBleStatusCallback(const std::function<void(BleStatus)>& callback)
+    {
+        bleStatusCallback = callback;
+        if (server != nullptr)
+        {
+            bleStatusCallback(getStatus());
+        }
+    }
+
 private:
     void setupBle()
     {
         BLEDevice::init(wifiManager.getDeviceName());
         server = BLEDevice::createServer();
-        server->setCallbacks(new BLEServerCallback());
+        server->setCallbacks(new BLEServerCallback(this));
 
         setupBleDeviceNameService(server);
         setupBleWiFiService(server);
@@ -569,10 +570,24 @@ private:
 
     class BLEServerCallback final : public BLEServerCallbacks
     {
+        BleManager* net;
+
     public:
+        explicit BLEServerCallback(BleManager* net): net(net)
+        {
+        }
+
+        void onConnect(BLEServer* pServer) override
+        {
+            if (net->bleStatusCallback)
+                net->bleStatusCallback(BleStatus::CONNECTED);
+        }
+
         void onDisconnect(BLEServer* pServer) override
         {
             pServer->getAdvertising()->start();
+            if (net->bleStatusCallback)
+                net->bleStatusCallback(BleStatus::ADVERTISING);
         }
     };
 };

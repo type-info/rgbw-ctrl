@@ -18,14 +18,14 @@ class WebServerHandler
     static constexpr auto PREFERENCES_PASSWORD_KEY = "p";
 
     AsyncWebServer webServer = AsyncWebServer(80);
-    AsyncWebSocketMessageHandler wsHandler;
-    AsyncWebSocket ws = AsyncWebSocket("/ws", wsHandler.eventHandler());
+
     AsyncAuthenticationMiddleware basicAuth;
 
 public:
-    void begin(AsyncWebHandler* alexaHandler)
+    void begin(AsyncWebHandler* alexaHandler, AsyncWebHandler* ws)
     {
-        webServer.addHandler(&ws);
+        webServer.addHandler(ws)
+                 .addMiddleware(&basicAuth);
         webServer.addHandler(alexaHandler);
         webServer.serveStatic("/", LittleFS, "/")
                  .setDefaultFile("index.html")
@@ -34,16 +34,6 @@ public:
 
         updateServerCredentials(getCredentials());
         webServer.begin();
-    }
-
-    void handle()
-    {
-        ws.cleanupClients();
-    }
-
-    [[nodiscard]] AsyncWebSocketMessageHandler* getWebSocket()
-    {
-        return &wsHandler;
     }
 
     [[nodiscard]] AsyncWebServer* getWebServer()

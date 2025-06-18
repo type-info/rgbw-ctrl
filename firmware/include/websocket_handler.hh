@@ -28,6 +28,8 @@ class WebSocketHandler
     AlexaIntegration& alexaIntegration;
     BleManager& bleManager;
 
+    AsyncWebSocket ws = AsyncWebSocket("/ws");
+
 public:
     WebSocketHandler(
         Output& output,
@@ -45,31 +47,98 @@ public:
         alexaIntegration(alexaIntegration),
         bleManager(bleManager)
     {
+        ws.onEvent([this](AsyncWebSocket* server, AsyncWebSocketClient* client,
+                          const AwsEventType type, void* arg, const uint8_t* data,
+                          const size_t len)
+        {
+            switch (type)
+            {
+            case WS_EVT_CONNECT:
+                ESP_LOGD(LOG_TAG, "WebSocket client connected: %s", client->remoteIP().toString().c_str());
+                break;
+            case WS_EVT_DISCONNECT:
+                ESP_LOGD(LOG_TAG, "WebSocket client disconnected: %s", client->remoteIP().toString().c_str());
+                break;
+            case WS_EVT_ERROR:
+                ESP_LOGE(LOG_TAG, "WebSocket error: %s", client->remoteIP().toString().c_str());
+                break;
+            case WS_EVT_PONG:
+                ESP_LOGD(LOG_TAG, "WebSocket pong received from client: %s", client->remoteIP().toString().c_str());
+                break;
+            case WS_EVT_DATA:
+                this->handleWebSocketMessage(server, client, arg, data, len);
+                break;
+            default:
+                break;
+            }
+        });
+
+        bleManager.setBleStatusCallback([this](auto status)
+        {
+            this->sendBleStatusMessage(status);
+        });
     }
 
-    void begin(AsyncWebSocketMessageHandler* webSocketHandler) const
+    void handle()
     {
-        webSocketHandler->onMessage(
-            [this](AsyncWebSocket* server, AsyncWebSocketClient* client, const uint8_t* data, const size_t len)
-            {
-                if (len < 1)
-                    return;
+        ws.cleanupClients();
+    }
 
-                const uint8_t messageTypeRaw = data[0];
-                if (messageTypeRaw > static_cast<uint8_t>(WebSocketMessageType::ON_ALEXA_INTEGRATION_SETTINGS))
-                {
-                    ESP_LOGD(LOG_TAG, "Received unknown WebSocket message type: %d", messageTypeRaw);
-                    return;
-                }
-
-                const auto messageType = static_cast<WebSocketMessageType>(messageTypeRaw);
-                ESP_LOGD(LOG_TAG, "Received WebSocket message of type %d", static_cast<int>(messageType));
-
-                this->handleWebSocketMessage(messageType, server, client, data, len);
-            });
+    AsyncWebHandler* getAsyncWebHandler()
+    {
+        return &ws;
     }
 
 private:
+    void handleWebSocketMessage(
+        AsyncWebSocket* server,
+        AsyncWebSocketClient* client,
+        void* arg,
+        const uint8_t* data,
+        const size_t len
+    ) const
+    {
+        const auto info = static_cast<AwsFrameInfo*>(arg);
+        if (info->opcode != WS_BINARY)
+        {
+            ESP_LOGD(LOG_TAG, "Received non-binary WebSocket message, opcode: %d", info->opcode);
+            return;
+        }
+        if (!info->final)
+        {
+            ESP_LOGD(LOG_TAG, "Received fragmented WebSocket message, only final messages are processed");
+            return;
+        }
+        if (info->index != 0)
+        {
+            ESP_LOGD(LOG_TAG, "Received fragmented WebSocket message with index %d, only index 0 is processed",
+                     info->index);
+            return;
+        }
+        if (info->len != len)
+        {
+            ESP_LOGD(LOG_TAG, "Received WebSocket message with unexpected length: expected %d, got %d", info->len, len);
+            return;
+        }
+        if (len < 1)
+        {
+            ESP_LOGD(LOG_TAG, "Received empty WebSocket message");
+            return;
+        }
+
+        const uint8_t messageTypeRaw = data[0];
+        if (messageTypeRaw > static_cast<uint8_t>(WebSocketMessageType::ON_ALEXA_INTEGRATION_SETTINGS))
+        {
+            ESP_LOGD(LOG_TAG, "Received unknown WebSocket message type: %d", messageTypeRaw);
+            return;
+        }
+
+        const auto messageType = static_cast<WebSocketMessageType>(messageTypeRaw);
+        ESP_LOGD(LOG_TAG, "Received WebSocket message of type %d", static_cast<int>(messageType));
+
+        this->handleWebSocketMessage(messageType, server, client, data, len);
+    }
+
     void handleWebSocketMessage(
         const WebSocketMessageType messageType,
         AsyncWebSocket* server,
@@ -169,6 +238,8 @@ private:
         case BleStatus::OFF:
             bleManager.stop();
             break;
+        default:
+            break;
         }
     }
 
@@ -200,6 +271,14 @@ private:
         if (len < sizeof(AlexaIntegrationSettingsMessage)) return;
         const auto* message = reinterpret_cast<const AlexaIntegrationSettingsMessage*>(data);
         alexaIntegration.applySettings(message->settings);
+    }
+
+    void sendBleStatusMessage(const BleStatus status)
+    {
+        const BleStatusMessage message(status);
+        const auto data = reinterpret_cast<const uint8_t*>(&message);
+        ws.binaryAll(data, sizeof(message));
+        ESP_LOGD(LOG_TAG, "Sent BLE status message: %d", status);
     }
 
 #pragma pack(push, 1)

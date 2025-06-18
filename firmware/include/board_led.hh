@@ -34,9 +34,9 @@ public:
             led.setup();
     }
 
-    void handle(const unsigned long now, const bool isBleActive,
-                const bool isBleClientConnected, const WifiScanStatus wifiScanStatus,
-                const WiFiStatus wifiStatus, const bool isOtaUpdateRunning)
+    void handle(const unsigned long now, const BleStatus bleStatus,
+                const WifiScanStatus wifiScanStatus, const WiFiStatus wifiStatus,
+                const bool isOtaUpdateRunning)
     {
         // If OTA update is running, blink purple
         if (isOtaUpdateRunning)
@@ -46,13 +46,13 @@ public:
             return;
         }
         // Steady yellow: connected to a BLE client
-        if (isBleClientConnected)
+        if (bleStatus == BleStatus::CONNECTED)
         {
             this->setColor({MAX_BRIGHTNESS, MAX_BRIGHTNESS, 0});
             return;
         }
         // Blinking blue: advertising, but not connected to a client
-        if (isBleActive)
+        if (bleStatus == BleStatus::ADVERTISING)
         {
             const uint8_t value = getFadeValue(now);
             this->setColor({0, 0, value});

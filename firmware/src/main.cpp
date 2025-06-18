@@ -45,10 +45,12 @@ void setup()
     otaHandler.begin(webServerHandler, &bleManager);
     wifiManager.setGotIpCallback([]()
     {
-        alexaIntegration.begin(webServerHandler);
-        webServerHandler.begin(alexaIntegration.createAsyncWebHandler());
-        webSocketHandler.begin(webServerHandler.getWebSocket());
+        alexaIntegration.begin();
         restHandler.begin();
+        webServerHandler.begin(
+            alexaIntegration.createAsyncWebHandler(),
+            webSocketHandler.getAsyncWebHandler()
+        );
     });
 
     if (const auto credentials = WiFiManager::loadCredentials())
@@ -75,13 +77,12 @@ void loop()
 
     boardButton.handle(now);
     alexaIntegration.handle();
-    webServerHandler.handle();
+    webSocketHandler.handle();
     bleManager.handle(now);
 
     boardLED.handle(
         now,
-        bleManager.isInitialised(),
-        bleManager.isClientConnected(),
+        bleManager.getStatus(),
         wifiManager.getScanStatus(),
         wifiManager.getStatus(),
         otaHandler.getState() == OtaHandler::UpdateState::Started

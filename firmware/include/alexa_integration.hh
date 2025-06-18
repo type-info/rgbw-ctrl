@@ -8,7 +8,6 @@
 
 #include "async_call.hh"
 #include "output.hh"
-#include "webserver_handler.hh"
 
 enum class AlexaIntegrationMode : uint8_t
 {
@@ -71,7 +70,7 @@ public:
     {
     }
 
-    void begin(WebServerHandler& webServerHandler)
+    void begin()
     {
         loadPreferences();
         setupDevices();
