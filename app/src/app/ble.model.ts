@@ -1,4 +1,5 @@
 export enum BleStatus {
   OFF = 0,
-  ON = 1,
+  ADVERTISING = 1,
+  CONNECTED = 2
 }

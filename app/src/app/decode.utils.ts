@@ -17,6 +17,7 @@ import {
 } from './wifi.model';
 import {ALEXA_MAX_DEVICE_NAME_LENGTH, AlexaIntegrationSettings} from './alexa-integration-settings.model';
 import {HttpCredentials} from './http-credentials.model';
+import {WebSocketBleStatusMessage} from './websocket.message';
 
 export const textDecoder = new TextDecoder('utf-8');
 
@@ -140,4 +141,12 @@ export function decodeHttpCredentials(buffer: Uint8Array): HttpCredentials {
   const username = reader.readCString(WIFI_SSID_MAX_LENGTH + 1);
   const password = reader.readCString(WIFI_MAX_PASSWORD_LENGTH + 1);
   return {username, password};
+}
+
+export function decodeWebSocketOnBleStatusMessage(buffer: ArrayBuffer): WebSocketBleStatusMessage {
+  const data = new Uint8Array(buffer);
+  if (data.length !== 2) {
+    throw new Error(`Invalid BLE status message length: ${data.length}`);
+  }
+  return {type: data[0], status: data[1]};
 }

@@ -2,9 +2,9 @@
 // These should mirror the binary message formats used in WebSocketHandler
 
 import { AlexaIntegrationSettings } from "./alexa-integration-settings.model";
-import { BleStatus } from "./ble.mode";
 import { HttpCredentials } from "./http-credentials.model";
 import { WiFiConnectionDetails, WiFiScanStatus, WiFiStatus } from "./wifi.model";
+import {BleStatus} from './ble.model';
 
 export enum WebSocketMessageType {
   ON_COLOR = 0,

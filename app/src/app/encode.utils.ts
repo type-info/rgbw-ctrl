@@ -3,7 +3,6 @@ import {
   ALEXA_SETTINGS_TOTAL_LENGTH,
   AlexaIntegrationSettings
 } from './alexa-integration-settings.model';
-import {BleStatus} from './ble.mode';
 import {HttpCredentials, MAX_HTTP_PASSWORD_LENGTH, MAX_HTTP_USERNAME_LENGTH} from './http-credentials.model';
 import {WebSocketMessageType} from './websocket.message';
 import {
@@ -18,6 +17,7 @@ import {
   WIFI_SSID_MAX_LENGTH,
   WiFiConnectionDetails
 } from './wifi.model';
+import {BleStatus} from './ble.model';
 
 export const textEncoder = new TextEncoder();
 
