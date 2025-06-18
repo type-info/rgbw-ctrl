@@ -9,14 +9,17 @@
 #include <string>
 
 #include "alexa_integration.hh"
+#include "AsyncJson.h"
 #include "async_call.hh"
+#include "version.hh"
 #include "wifi_manager.hh"
 #include "webserver_handler.hh"
 
 enum class BleStatus :uint8_t
 {
     OFF,
-    ON
+    ADVERTISING,
+    CONNECTED
 };
 
 class BleManager
@@ -145,7 +148,8 @@ public:
         if (this->isClientConnected())
         {
             bluetoothTimeout = now + BLE_TIMEOUT_MS;
-        } else if (now > bluetoothTimeout)
+        }
+        else if (now > bluetoothTimeout)
         {
             ESP_LOGW(LOG_TAG, "No BLE client connected for %d ms, stopping BLE server.", BLE_TIMEOUT_MS);
             this->stop();
@@ -172,6 +176,35 @@ public:
     [[nodiscard]] bool isInitialised() const
     {
         return this->server != nullptr;
+    }
+
+    [[nodiscard]] BleStatus getStatus() const
+    {
+        if (isClientConnected())
+            return BleStatus::CONNECTED;
+        if (isInitialised())
+            return BleStatus::ADVERTISING;
+        return BleStatus::OFF;
+    }
+
+    [[nodiscard]] const char* getStatusString() const
+    {
+        switch (getStatus())
+        {
+        case BleStatus::OFF:
+            return "OFF";
+        case BleStatus::ADVERTISING:
+            return "ADVERTISING";
+        case BleStatus::CONNECTED:
+            return "CONNECTED";
+        default:
+            return "UNKNOWN";
+        }
+    }
+
+    void toJson(const JsonObject& to) const
+    {
+        to["status"] = getStatusString();
     }
 
 private:
@@ -363,7 +396,7 @@ private:
     public:
         void onRead(BLECharacteristic* pCharacteristic) override
         {
-            pCharacteristic->setValue("1.0.0");
+            pCharacteristic->setValue(FIRMWARE_VERSION);
         }
     };
 

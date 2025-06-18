@@ -8,6 +8,7 @@
 #include "output.hh"
 #include "push_button.hh"
 #include "ota_handler.hh"
+#include "rest_handler.hh"
 #include "websocket_handler.hh"
 
 Output output;
@@ -28,6 +29,13 @@ WebSocketHandler webSocketHandler(output,
                                   alexaIntegration,
                                   bleManager);
 
+RestHandler restHandler(output,
+                        otaHandler,
+                        wifiManager,
+                        webServerHandler,
+                        alexaIntegration,
+                        bleManager);
+
 void setup()
 {
     nvs_flash_init();
@@ -40,6 +48,7 @@ void setup()
         alexaIntegration.begin(webServerHandler);
         webServerHandler.begin(alexaIntegration.createAsyncWebHandler());
         webSocketHandler.begin(webServerHandler.getWebSocket());
+        restHandler.begin();
     });
 
     if (const auto credentials = WiFiManager::loadCredentials())
@@ -58,42 +67,6 @@ void setup()
     });
 
     LittleFS.begin(true);
-    webServerHandler.on("/restart", HTTP_GET, [](AsyncWebServerRequest* request)
-    {
-        request->onDisconnect([]()
-        {
-            bleManager.stop();
-            esp_restart();
-        });
-        request->send(200, "text/plain", "Restarting...");
-    });
-    webServerHandler.on("/reset", HTTP_GET, [](AsyncWebServerRequest* request)
-    {
-        request->onDisconnect([]()
-        {
-            nvs_flash_erase();
-            delay(300);
-            bleManager.stop();
-            esp_restart();
-        });
-        request->send(200, "text/plain", "Resetting to factory defaults...");
-    });
-
-    webServerHandler.on("/bluetooth", HTTP_GET, [](AsyncWebServerRequest* request)
-    {
-        auto state = request->getParam("state")->value() == "on";
-        request->onDisconnect([state]()
-        {
-            if (state == true)
-                bleManager.start();
-            else
-                bleManager.stop();
-        });
-        if (state)
-            request->send(200, "text/plain", "Bluetooth enabled");
-        else
-            request->send(200, "text/plain", "Bluetooth disabled, device will restart");
-    });
 }
 
 void loop()

@@ -169,4 +169,14 @@ public:
             update(static_cast<Color>(i), array[i], notify);
         }
     }
+
+    void toJson(const JsonArray& to) const
+    {
+        for (const auto& light : lights)
+        {
+            auto obj = to.add<JsonObject>();
+            obj["state"] = light.isOn() ? "on" : "off";
+            obj["value"] = light.getValue();
+        }
+    }
 };

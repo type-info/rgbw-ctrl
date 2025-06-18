@@ -2,7 +2,9 @@
 
 #include <utility>
 #include <memory>
-#include <Espalexa.h>
+
+#include "Espalexa.h"
+#include "ArduinoJson.h"
 
 #include "async_call.hh"
 #include "output.hh"
@@ -26,6 +28,32 @@ struct AlexaIntegrationSettings
     char gDeviceName[MAX_DEVICE_NAME_LENGTH] = "";
     char bDeviceName[MAX_DEVICE_NAME_LENGTH] = "";
     char wDeviceName[MAX_DEVICE_NAME_LENGTH] = "";
+
+    void toJson(const JsonObject& to) const
+    {
+        to["mode"] = this->integrationModeString();
+        const auto names = to["names"].to<JsonArray>();
+        if (rDeviceName[0] != '\0') names.add(rDeviceName);
+        if (gDeviceName[0] != '\0') names.add(gDeviceName);
+        if (bDeviceName[0] != '\0') names.add(bDeviceName);
+        if (wDeviceName[0] != '\0') names.add(wDeviceName);
+    }
+
+    const char* integrationModeString() const
+    {
+        switch (integrationMode)
+        {
+        case AlexaIntegrationMode::OFF:
+            return "off";
+        case AlexaIntegrationMode::RGBW_DEVICE:
+            return "rgbw_device";
+        case AlexaIntegrationMode::RGB_DEVICE:
+            return "rgb_device";
+        case AlexaIntegrationMode::MULTI_DEVICE:
+            return "multi_device";
+        }
+        return "off";
+    }
 };
 #pragma pack(pop)
 

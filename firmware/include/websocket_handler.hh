@@ -160,7 +160,7 @@ private:
             message->status
         )
         {
-        case BleStatus::ON:
+        case BleStatus::ADVERTISING:
             asyncCall([this]()
             {
                 bleManager.start();

@@ -38,6 +38,23 @@ public:
         return UpdateState::Idle;
     }
 
+    [[nodiscard]] const char* getStateString() const
+    {
+        switch (getState())
+        {
+        case UpdateState::Idle: return "Idle";
+        case UpdateState::Started: return "Update in progress";
+        case UpdateState::Completed: return "Update completed successfully";
+        case UpdateState::Failed: return "Update failed";
+        }
+        return "Unknown state";
+    }
+
+    void toJson(const JsonObject& to) const
+    {
+        to["state"] = getStateString();
+    }
+
 private:
     class AsyncOtaWebHandler final : public AsyncWebHandler
     {
@@ -62,8 +79,9 @@ private:
 
         mutable std::optional<std::array<char, MAX_UPDATE_ERROR_MSG_LEN>> updateError;
         mutable std::atomic<UpdateState> updateState = UpdateState::Idle;
+        mutable std::atomic<uint8_t> progressPercentage = 0;
         mutable bool uploadCompleted = false;
-        mutable size_t totalBytesExpected = 0;
+        mutable std::optional<size_t> totalBytesExpected = std::nullopt;
         mutable size_t totalBytesReceived = 0;
 
         bool canHandle(AsyncWebServerRequest* request) const override
@@ -110,7 +128,7 @@ private:
                 updateTarget = nameParam == "filesystem" ? U_SPIFFS : U_FLASH;
             }
 
-            if (Update.begin(totalBytesExpected == 0 ? UPDATE_SIZE_UNKNOWN : totalBytesExpected, updateTarget))
+            if (Update.begin(totalBytesExpected.value_or(UPDATE_SIZE_UNKNOWN), updateTarget))
             {
                 ESP_LOGI(LOG_TAG, "Update started");
             }
@@ -240,16 +258,18 @@ private:
         {
             updateState = UpdateState::Idle;
             uploadCompleted = false;
-            totalBytesExpected = 0;
+            totalBytesExpected.reset();
             totalBytesReceived = 0;
+            progressPercentage = 0;
         }
 
         void reportProgress() const
         {
-            if (onProgressCallback && totalBytesExpected > 0)
+            if (!totalBytesExpected.has_value()) return;
+            progressPercentage = static_cast<uint8_t>((100 * totalBytesReceived) / totalBytesExpected.value());
+            if (onProgressCallback)
             {
-                const auto percent = static_cast<uint8_t>((100 * totalBytesReceived) / totalBytesExpected);
-                onProgressCallback(updateState, percent);
+                onProgressCallback(updateState, progressPercentage);
             }
         }
 
@@ -278,9 +298,14 @@ private:
             onProgressCallback = std::move(callback);
         }
 
-        UpdateState getUpdateState() const
+        [[nodiscard]] UpdateState getUpdateState() const
         {
             return updateState;
+        }
+
+        [[nodiscard]] uint8_t getProgressPercentage() const
+        {
+            return progressPercentage;
         }
     };
 

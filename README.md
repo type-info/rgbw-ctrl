@@ -62,6 +62,70 @@ This firmware includes a WebSocket handler that supports real-time, bidirectiona
 
 Messages are binary-encoded and processed asynchronously to prevent blocking the main execution loop. RGBW sliders and Bluetooth control UI are bound directly to these messages via a browser-based WebSocket connection.
 
+## REST API
+
+The device exposes a RESTful interface for status retrieval and control.
+
+### 📍 Available Endpoints
+
+#### `GET /rest/state`
+Returns a JSON document with full system state:
+
+```json
+{
+  "deviceName": "rgbw-ctrl-of-you",
+  "firmwareVersion": "1.0.0",
+  "heap": 117380,
+  "wifi": {
+    "details": {
+      "ssid": "my-wifi",
+      "mac": "00:00:00:00:00:00",
+      "ip": "192.168.0.2",
+      "gateway": "192.168.0.1",
+      "subnet": "255.255.255.0",
+      "dns": "1.1.1.1"
+    },
+    "status": "CONNECTED"
+  },
+  "alexa": {
+    "mode": "rgbw_device",
+    "names": [
+      "led strip"
+    ]
+  },
+  "output": [
+    { "state": "off", "value": 255 },
+    { "state": "off", "value": 255 },
+    { "state": "off", "value": 255 },
+    { "state": "off", "value": 255 }
+  ],
+  "ble": {
+    "status": "OFF"
+  },
+  "ota": {
+    "state": "Idle"
+  }
+}
+```
+
+#### `GET /rest/system/restart`
+Restarts the device after sending a response.
+
+#### `GET /rest/system/reset`
+Performs a factory reset (clears NVS), stops BLE, and restarts.
+
+#### `GET /rest/bluetooth?state=on|off`
+Enables or disables Bluetooth based on the query parameter.
+
+- `state=on` → enables BLE
+- `state=off` → disables BLE and restarts
+
+---
+
+### 🔒 Authentication
+
+REST endpoints use the same authentication as the web server and OTA.
+
 ## OTA Update via Web Server
 
 This project includes support for OTA (Over-the-Air) firmware and filesystem updates via HTTP POST requests.

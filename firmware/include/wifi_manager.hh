@@ -7,6 +7,7 @@
 #include <atomic>
 #include <mutex>
 
+#include "AsyncJson.h"
 #include "wifi_model.hh"
 
 #define DEVICE_NAME_MAX_LENGTH 28
@@ -97,9 +98,47 @@ public:
         return wifiStatus;
     }
 
+    [[nodiscard]] const char* getStatusString() const
+    {
+        switch (wifiStatus)
+        {
+        case WiFiStatus::DISCONNECTED:
+            return "DISCONNECTED";
+        case WiFiStatus::CONNECTED:
+            return "CONNECTED";
+        case WiFiStatus::CONNECTED_NO_IP:
+            return "CONNECTED_NO_IP";
+        case WiFiStatus::WRONG_PASSWORD:
+            return "WRONG_PASSWORD";
+        case WiFiStatus::NO_AP_FOUND:
+            return "NO_AP_FOUND";
+        case WiFiStatus::CONNECTION_FAILED:
+            return "CONNECTION_FAILED";
+        default:
+            return "UNKNOWN";
+        }
+    }
+
     [[nodiscard]] WifiScanStatus getScanStatus() const
     {
         return scanStatus;
+    }
+
+    [[nodiscard]] const char* getScanStatusString() const
+    {
+        switch (scanStatus)
+        {
+        case WifiScanStatus::NOT_STARTED:
+            return "NOT_STARTED";
+        case WifiScanStatus::COMPLETED:
+            return "COMPLETED";
+        case WifiScanStatus::RUNNING:
+            return "RUNNING";
+        case WifiScanStatus::FAILED:
+            return "FAILED";
+        default:
+            return "UNKNOWN";
+        }
     }
 
     [[nodiscard]] WiFiScanResult getScanResult() const
@@ -174,6 +213,12 @@ public:
         {
             deviceNameChanged(safeName);
         }
+    }
+
+    void toJson(const JsonObject& to) const
+    {
+        WiFiDetails::toJson(to["details"].to<JsonObject>());
+        to["status"] = getStatusString();
     }
 
     [[nodiscard]] static std::optional<WiFiConnectionDetails> loadCredentials()

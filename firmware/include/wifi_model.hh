@@ -3,6 +3,8 @@
 #include <WiFi.h>
 #include <cstring>
 
+#include "ArduinoJson.h"
+
 #define WIFI_MAX_SSID_LENGTH      32
 #define WIFI_MAX_PASSWORD_LENGTH  64
 #define WIFI_MAX_EAP_IDENTITY     128
@@ -130,6 +132,16 @@ struct WiFiDetails
         details.subnet = static_cast<uint32_t>(WiFi.subnetMask());
         details.dns = static_cast<uint32_t>(WiFi.dnsIP());
         return details;
+    }
+
+    static void toJson(JsonObject to)
+    {
+        to["ssid"] = WiFi.SSID();
+        to["mac"] = WiFi.macAddress();
+        to["ip"] = WiFi.localIP().toString();
+        to["gateway"] = WiFi.gatewayIP().toString();
+        to["subnet"] = WiFi.subnetMask().toString();
+        to["dns"] = WiFi.dnsIP().toString();
     }
 };
 
