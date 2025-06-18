@@ -64,7 +64,7 @@ Messages are binary-encoded and processed asynchronously to prevent blocking the
 
 ## OTA Update via Web Server
 
-This project includes support for OTA (Over-the-Air) firmware and filesystem updates via HTTP POST requests using the `OtaHandler` class.
+This project includes support for OTA (Over-the-Air) firmware and filesystem updates via HTTP POST requests.
 
 ### 📡 Supported Upload Targets
 
@@ -75,7 +75,7 @@ This project includes support for OTA (Over-the-Air) firmware and filesystem upd
 
 ### 🔒 Authentication
 
-OTA endpoints are protected using Basic Authentication via `AsyncAuthenticationMiddleware`. Unauthorized requests receive `401 Unauthorized`.
+OTA endpoints are protected using Basic Authentication. Unauthorized requests receive `401 Unauthorized`.
 
 ---
 
@@ -109,13 +109,9 @@ curl -u user:pass -F "name=filesystem" -F "file=@littlefs.bin" http://<device-ip
 
 ### 🔁 Auto-Restart
 
-After a successful OTA update, the device automatically restarts using:
-
-```cpp
-ESP.restart();
-```
-
-This is triggered in a safe way via `request->onDisconnect(...)` to ensure the HTTP response is completed before reboot.
+After a successful OTA update, the device automatically restarts.
+No state is lost, and the new firmware or filesystem is immediately active.
+More details available in the [OtaHandler documentation](doc/OTA.md).
 
 ## ⚙️ Firmware Build Process
 

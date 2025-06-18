@@ -1,13 +1,15 @@
 #pragma once
 
 #include <Update.h>
-#include <StreamString.h>
 #include <optional>
+#include <array>
 #include "webserver_handler.hh"
 
 class OtaHandler
 {
 public:
+    static constexpr uint8_t MAX_UPDATE_ERROR_MSG_LEN = 64;
+
     enum class UpdateState
     {
         Idle,
@@ -58,8 +60,8 @@ private:
         const AsyncAuthenticationMiddleware& asyncAuthenticationMiddleware;
         BleManager* bleManager = nullptr;
 
-        mutable std::optional<String> updateError;
-        mutable volatile UpdateState updateState = UpdateState::Idle;
+        mutable std::optional<std::array<char, MAX_UPDATE_ERROR_MSG_LEN>> updateError;
+        mutable std::atomic<UpdateState> updateState = UpdateState::Idle;
         mutable bool uploadCompleted = false;
         mutable size_t totalBytesExpected = 0;
         mutable size_t totalBytesReceived = 0;
@@ -82,26 +84,34 @@ private:
 
             if (bleManager != nullptr && bleManager->isInitialised())
             {
-                updateError = MSG_BLUETOOTH_STARTED;
+                setUpdateError(MSG_BLUETOOTH_STARTED);
                 return true;
             }
 
-            updateError.reset();
-            totalBytesExpected = 0;
-            totalBytesReceived = 0;
+            resetUpdateState();
+            updateState = UpdateState::Started;
 
             if (request->hasHeader(CONTENT_LENGTH_HEADER))
                 totalBytesExpected = request->header(CONTENT_LENGTH_HEADER).toInt();
 
-            int name = U_FLASH;
+            request->onDisconnect([this]()
+            {
+                if (updateState != UpdateState::Completed)
+                    Update.abort();
+                else
+                    restartAfterUpdate();
+                resetUpdateState();
+            });
+
+            int updateTarget = U_FLASH;
             if (request->hasParam("name", false))
             {
-                name = request->getParam("name")->value() == "filesystem" ? U_SPIFFS : U_FLASH;
+                const String& nameParam = request->getParam("name")->value();
+                updateTarget = nameParam == "filesystem" ? U_SPIFFS : U_FLASH;
             }
-            if (Update.begin(totalBytesExpected == 0 ? UPDATE_SIZE_UNKNOWN : totalBytesExpected, name))
+
+            if (Update.begin(totalBytesExpected == 0 ? UPDATE_SIZE_UNKNOWN : totalBytesExpected, updateTarget))
             {
-                updateState = UpdateState::Started;
-                uploadCompleted = false;
                 ESP_LOGI(LOG_TAG, "Update started");
             }
             else
@@ -123,47 +133,36 @@ private:
                 return;
             }
             if (request->hasAttribute(ATTR_DOUBLE_REQUEST))
-            {
-                request->send(400, "text/plain", MSG_ALREADY_IN_PROGRESS);
-                return;
-            }
+                return request->send(400, "text/plain", MSG_ALREADY_IN_PROGRESS);
+
             if (updateError)
-            {
-                sendErrorResponse(request);
-                if (updateState != UpdateState::Completed) Update.abort();
-                resetUpdateState();
-                return;
-            }
+                return sendErrorResponse(request);
+
             if (updateState != UpdateState::Started)
-            {
-                request->send(500, "text/plain", MSG_NO_SPACE);
-                Update.abort();
-                return;
-            }
+                return request->send(500, "text/plain", MSG_NO_SPACE);
+
             if (!uploadCompleted)
             {
+                ESP_LOGW(LOG_TAG, "OTA upload incomplete: received %u of %u bytes", totalBytesReceived,
+                         totalBytesExpected);
+                updateState = UpdateState::Idle;
                 request->send(500, "text/plain", MSG_UPLOAD_INCOMPLETE);
                 return;
             }
             if (updateState == UpdateState::Completed)
-            {
-                request->send(200, "text/plain", MSG_ALREADY_FINALIZED);
-                return;
-            }
+                return request->send(200, "text/plain", MSG_ALREADY_FINALIZED);
 
             if (Update.end(true))
             {
                 updateState = UpdateState::Completed;
                 ESP_LOGI(LOG_TAG, "Update successfully completed");
                 request->send(200, "text/plain", MSG_SUCCESS);
-                request->onDisconnect(restartAfterUpdate);
             }
             else
             {
                 updateState = UpdateState::Failed;
                 checkUpdateError();
                 sendErrorResponse(request);
-                resetUpdateState();
             }
         }
 
@@ -177,9 +176,7 @@ private:
         ) override
         {
             if (updateState != UpdateState::Started) return;
-            if (!request->hasAttribute(ATTR_AUTHENTICATED)
-                || request->hasAttribute(ATTR_DOUBLE_REQUEST))
-                return;
+            if (!isRequestValidForUpload(request)) return;
 
             if (Update.write(data, len) != len)
             {
@@ -191,8 +188,7 @@ private:
             totalBytesReceived += len;
             reportProgress();
 
-            if (!final) return;
-            uploadCompleted = true;
+            if (final) uploadCompleted = true;
         }
 
         void handleBody(
@@ -204,9 +200,7 @@ private:
         ) override
         {
             if (updateState != UpdateState::Started) return;
-            if (!request->hasAttribute(ATTR_AUTHENTICATED)
-                || request->hasAttribute(ATTR_DOUBLE_REQUEST))
-                return;
+            if (!isRequestValidForUpload(request)) return;
 
             if (Update.write(data, len) != len)
             {
@@ -224,17 +218,22 @@ private:
 
         void sendErrorResponse(AsyncWebServerRequest* request) const
         {
-            request->send(500, "text/plain", updateError.value_or("Unknown OTA error"));
+            request->send(500, "text/plain", updateError.has_value() ? updateError->data() : "Unknown OTA error");
             updateError.reset();
         }
 
         void checkUpdateError() const
         {
-            StreamString stream;
-            Update.printError(stream);
-            const char* error = stream.c_str();
-            updateError = error;
+            const char* error = Update.errorString();
+            setUpdateError(error);
             ESP_LOGE(LOG_TAG, "Update error: %s", error);
+        }
+
+        void setUpdateError(const char* error) const
+        {
+            std::array<char, MAX_UPDATE_ERROR_MSG_LEN> buffer = {};
+            strncpy(buffer.data(), error, MAX_UPDATE_ERROR_MSG_LEN - 1);
+            updateError = buffer;
         }
 
         void resetUpdateState() const
@@ -261,8 +260,15 @@ private:
             ESP.restart();
         }
 
+        static bool isRequestValidForUpload(const AsyncWebServerRequest* request)
+        {
+            return request->hasAttribute(ATTR_AUTHENTICATED)
+                && !request->hasAttribute(ATTR_DOUBLE_REQUEST);
+        }
+
     public:
-        explicit AsyncOtaWebHandler(const AsyncAuthenticationMiddleware& async_authentication_middleware, BleManager* bleManager)
+        explicit AsyncOtaWebHandler(const AsyncAuthenticationMiddleware& async_authentication_middleware,
+                                    BleManager* bleManager)
             : asyncAuthenticationMiddleware(async_authentication_middleware), bleManager(bleManager)
         {
         }
