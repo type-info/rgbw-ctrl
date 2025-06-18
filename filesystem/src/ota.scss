@@ -1,0 +1,104 @@
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: #f0f0f0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  margin-bottom: 1em;
+  cursor: pointer;
+}
+
+h1 img {
+  height: 3em;
+  vertical-align: middle;
+  margin-right: 0.5em;
+}
+
+.upload-container {
+  max-width: 500px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
+  align-items: center;
+}
+
+#file-label {
+  grid-column: span 2;
+  background: #fff;
+  padding: 0.5em 1em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#file {
+  display: none;
+}
+
+#file-name {
+  grid-column: span 2;
+  font-style: italic;
+  font-size: 0.9em;
+  color: #333;
+}
+
+select {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 1em;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='gray' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 5.646a.5.5 0 0 1 .708 0L8 11.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5em top 50%;
+  background-size: 1em;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  padding: 0.5em 2em 0.5em 0.5em;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 3px rgba(76, 175, 80, 0.5);
+  background-color: #f9fff9;
+}
+
+button {
+  grid-column: span 2;
+  padding: 0.5em 1em;
+  background-color: #4CAF50;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+}
+
+button:disabled {
+  background-color: #a5d6a7;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+#progress-container {
+  grid-column: span 2;
+  width: 100%;
+  background-color: #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 20px;
+  display: none;
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0;
+  background-color: #4CAF50;
+  transition: width 0.1s;
+}

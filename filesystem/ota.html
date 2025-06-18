@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Firmware Upgrade rgbw-ctrl</title>
+    <link rel="stylesheet" href="src/ota.scss"/>
+</head>
+
+<body>
+<h1 onclick="location.href='/'">
+    <img src="src/icon.svg" alt="TypeInfo"/>
+    <span>rgbw-ctrl</span><br>
+    <span>Firmware Upgrade</span>
+</h1>
+
+<div class="upload-container">
+    <label for="type">Type</label>
+    <select id="type">
+        <option value="firmware">Firmware</option>
+        <option value="filesystem">FileSystem</option>
+    </select>
+
+    <label for="file" id="file-label">Choose .bin file</label>
+    <input type="file" id="file" accept=".bin"/>
+    <span id="file-name">No file selected</span>
+
+    <button id="update-btn" disabled>Update</button>
+
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+</div>
+
+<script type="module" src="src/ota.ts"></script>
+</body>
+
+</html>
