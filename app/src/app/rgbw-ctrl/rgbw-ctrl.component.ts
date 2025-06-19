@@ -331,6 +331,7 @@ export class RgbwCtrlComponent implements OnDestroy {
       console.error('Failed to restart device:', e);
       this.snackBar.open('Failed to restart device', 'Close', {duration: 3000});
     } finally {
+      this.disconnect();
       loading.close();
     }
   }
