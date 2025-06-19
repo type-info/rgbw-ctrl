@@ -14,7 +14,6 @@ class RestHandler
     Output& output;
     OtaHandler& otaHandler;
     WiFiManager& wifiManager;
-    WebServerHandler& webServerHandler;
     AlexaIntegration& alexaIntegration;
     BleManager& bleManager;
 
@@ -23,7 +22,6 @@ public:
         Output& output,
         OtaHandler& otaHandler,
         WiFiManager& wifiManager,
-        WebServerHandler& webServerHandler,
         AlexaIntegration& alexaIntegration,
         BleManager& bleManager
     )
@@ -31,99 +29,133 @@ public:
         output(output),
         otaHandler(otaHandler),
         wifiManager(wifiManager),
-        webServerHandler(webServerHandler),
         alexaIntegration(alexaIntegration),
         bleManager(bleManager)
     {
     }
 
-    void begin() const
+    AsyncWebHandler* createAsyncWebHandler()
     {
-        webServerHandler.on("/rest/state", HTTP_GET, [this](AsyncWebServerRequest* request)
-        {
-            const auto response = new AsyncJsonResponse();
-            const auto doc = response->getRoot().to<JsonObject>();
-            doc["deviceName"] = wifiManager.getDeviceName();
-            doc["firmwareVersion"] = FIRMWARE_VERSION;
-            doc["heap"] = esp_get_free_heap_size();
-
-            wifiManager.toJson(doc["wifi"].to<JsonObject>());
-            alexaIntegration.getSettings().toJson(doc["alexa"].to<JsonObject>());
-            output.toJson(doc["output"].to<JsonArray>());
-            bleManager.toJson(doc["ble"].to<JsonObject>());
-            otaHandler.toJson(doc["ota"].to<JsonObject>());
-
-            response->addHeader("Cache-Control", "no-store");
-            response->setLength();
-            request->send(response);
-        });
-
-        webServerHandler.on("/rest/system/restart", HTTP_GET, [this](AsyncWebServerRequest* request)
-        {
-            request->onDisconnect([this]()
-            {
-                bleManager.stop();
-                esp_restart();
-            });
-            request->send(200, "text/plain", "Restarting...");
-        });
-
-        webServerHandler.on("/rest/system/reset", HTTP_GET, [this](AsyncWebServerRequest* request)
-        {
-            request->onDisconnect([this]()
-            {
-                nvs_flash_erase();
-                delay(300);
-                bleManager.stop();
-                esp_restart();
-            });
-            request->send(200, "text/plain", "Resetting to factory defaults...");
-        });
-
-        webServerHandler.on("/rest/bluetooth", HTTP_GET, [this](AsyncWebServerRequest* request)
-        {
-            auto state = request->getParam("state")->value() == "on";
-            request->onDisconnect([this,state]()
-            {
-                if (state == true)
-                    bleManager.start();
-                else
-                    bleManager.stop();
-            });
-            if (state)
-                request->send(200, "text/plain", "Bluetooth enabled");
-            else
-                request->send(200, "text/plain", "Bluetooth disabled, device will restart");
-        });
-
-        webServerHandler.on("/rest/color", HTTP_GET, [this](AsyncWebServerRequest* request)
-        {
-            auto r = output.getValue(Color::Red);
-            if (request->hasParam("r"))
-            {
-                r = std::max(std::min(request->getParam("r")->value().toInt(), 255l), 0l);
-            }
-            auto g = output.getValue(Color::Green);
-            if (request->hasParam("g"))
-            {
-                g = std::max(std::min(request->getParam("g")->value().toInt(), 255l), 0l);
-            }
-            auto b = output.getValue(Color::Blue);
-            if (request->hasParam("b"))
-            {
-                b = std::max(std::min(request->getParam("b")->value().toInt(), 255l), 0l);
-            }
-            auto w = output.getValue(Color::White);
-            if (request->hasParam("w"))
-            {
-                w = std::max(std::min(request->getParam("w")->value().toInt(), 255l), 0l);
-            }
-            output.setColor(r, g, b, w);
-            if (r > 0 || g > 0 || b > 0 || w > 0)
-            {
-                output.turnOn();
-            }
-            request->send(200, "text/plain", "Color set");
-        });
+        return new AsyncRestWebHandler(this);
     }
+
+    void handleStateRequest(AsyncWebServerRequest* request) const
+    {
+        const auto response = new AsyncJsonResponse();
+        const auto doc = response->getRoot().to<JsonObject>();
+        doc["deviceName"] = wifiManager.getDeviceName();
+        doc["firmwareVersion"] = FIRMWARE_VERSION;
+        doc["heap"] = esp_get_free_heap_size();
+
+        wifiManager.toJson(doc["wifi"].to<JsonObject>());
+        alexaIntegration.getSettings().toJson(doc["alexa"].to<JsonObject>());
+        output.toJson(doc["output"].to<JsonArray>());
+        bleManager.toJson(doc["ble"].to<JsonObject>());
+        otaHandler.toJson(doc["ota"].to<JsonObject>());
+
+        response->addHeader("Cache-Control", "no-store");
+        response->setLength();
+        request->send(response);
+    }
+
+    void handleRestartRequest(AsyncWebServerRequest* request) const
+    {
+        request->onDisconnect([this]()
+        {
+            bleManager.stop();
+            esp_restart();
+        });
+        request->send(200, "text/plain", "Restarting...");
+    }
+
+    void handleResetRequest(AsyncWebServerRequest* request) const
+    {
+        request->onDisconnect([this]()
+        {
+            nvs_flash_erase();
+            delay(300);
+            bleManager.stop();
+            esp_restart();
+        });
+        request->send(200, "text/plain", "Resetting to factory defaults...");
+    }
+
+    void handleBluetoothRequest(AsyncWebServerRequest* request) const
+    {
+        auto state = request->getParam("state")->value() == "on";
+        request->onDisconnect([this,state]()
+        {
+            if (state == true)
+                bleManager.start();
+            else
+                bleManager.stop();
+        });
+        if (state)
+            request->send(200, "text/plain", "Bluetooth enabled");
+        else
+            request->send(200, "text/plain", "Bluetooth disabled, device will restart");
+    }
+
+    void handleColorRequest(AsyncWebServerRequest* request) const
+    {
+        const auto r = extractParam(request, "r", Color::Red);
+        const auto g = extractParam(request, "g", Color::Green);
+        const auto b = extractParam(request, "b", Color::Blue);
+        const auto w = extractParam(request, "w", Color::White);
+        output.setColor(r, g, b, w);
+        request->send(200, "text/plain", "Color set");
+    }
+
+    uint8_t extractParam(const AsyncWebServerRequest* req, const char* key, const Color color) const
+    {
+        if (req->hasParam(key))
+            return std::clamp(req->getParam(key)->value().toInt(), 0l, 255l);
+        return output.getValue(color);
+    }
+
+
+    class AsyncRestWebHandler final : public AsyncWebHandler
+    {
+        RestHandler* restHandler;
+
+    public:
+        explicit AsyncRestWebHandler(RestHandler* restHandler): restHandler(restHandler)
+        {
+        }
+
+    private:
+        bool canHandle(AsyncWebServerRequest* request) const override
+        {
+            return request->url().startsWith("/rest");
+        }
+
+        void handleRequest(AsyncWebServerRequest* request) override
+        {
+            const auto type = request->url().substring(5);
+            if (type == "/state")
+            {
+                restHandler->handleStateRequest(request);
+            }
+            else if (type == "/color")
+            {
+                restHandler->handleColorRequest(request);
+            }
+            else if (type == "/bluetooth")
+            {
+                restHandler->handleBluetoothRequest(request);
+            }
+            else if (type == "/system/restart")
+            {
+                restHandler->handleRestartRequest(request);
+            }
+            else if (type == "/system/reset")
+            {
+                restHandler->handleResetRequest(request);
+            }
+            else
+            {
+                request->send(404, "text/plain", "Not Found");
+            }
+        }
+    };
 };

@@ -22,11 +22,14 @@ class WebServerHandler
     AsyncAuthenticationMiddleware basicAuth;
 
 public:
-    void begin(AsyncWebHandler* alexaHandler, AsyncWebHandler* ws)
+    void begin(AsyncWebHandler* alexaHandler, AsyncWebHandler* ws, AsyncWebHandler* restHandler)
     {
         webServer.addHandler(ws)
                  .addMiddleware(&basicAuth);
+        webServer.addHandler(restHandler)
+                 .addMiddleware(&basicAuth);
         webServer.addHandler(alexaHandler);
+
         webServer.serveStatic("/", LittleFS, "/")
                  .setDefaultFile("index.html")
                  .setTryGzipFirst(true)

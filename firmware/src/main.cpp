@@ -32,7 +32,6 @@ WebSocketHandler webSocketHandler(output,
 RestHandler restHandler(output,
                         otaHandler,
                         wifiManager,
-                        webServerHandler,
                         alexaIntegration,
                         bleManager);
 
@@ -46,10 +45,10 @@ void setup()
     wifiManager.setGotIpCallback([]()
     {
         alexaIntegration.begin();
-        restHandler.begin();
         webServerHandler.begin(
             alexaIntegration.createAsyncWebHandler(),
-            webSocketHandler.getAsyncWebHandler()
+            webSocketHandler.getAsyncWebHandler(),
+            restHandler.createAsyncWebHandler()
         );
     });
 
