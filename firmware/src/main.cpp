@@ -41,7 +41,7 @@ void setup()
     boardLED.begin();
     output.begin();
     wifiManager.begin();
-    otaHandler.begin(webServerHandler, &bleManager);
+    otaHandler.begin(webServerHandler);
     wifiManager.setGotIpCallback([]()
     {
         alexaIntegration.begin();
