@@ -115,13 +115,13 @@ private:
         }
         if (info->index != 0)
         {
-            ESP_LOGD(LOG_TAG, "Received fragmented WebSocket message with index %d, only index 0 is processed",
+            ESP_LOGD(LOG_TAG, "Received fragmented WebSocket message with index %lld, only index 0 is processed",
                      info->index);
             return;
         }
         if (info->len != len)
         {
-            ESP_LOGD(LOG_TAG, "Received WebSocket message with unexpected length: expected %d, got %d", info->len, len);
+            ESP_LOGD(LOG_TAG, "Received WebSocket message with unexpected length: expected %lld, got %d", info->len, len);
             return;
         }
         if (len < 1)
@@ -282,7 +282,7 @@ private:
         const BleStatusMessage message(status);
         const auto data = reinterpret_cast<const uint8_t*>(&message);
         ws.binaryAll(data, sizeof(message));
-        ESP_LOGD(LOG_TAG, "Sent BLE status message: %d", status);
+        ESP_LOGD(LOG_TAG, "Sent BLE status message: %u", static_cast<uint8_t>(status));
     }
 
     void sendOutputColorMessage()

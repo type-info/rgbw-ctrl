@@ -173,7 +173,7 @@ private:
             if (!uploadCompleted)
             {
                 ESP_LOGW(LOG_TAG, "OTA upload incomplete: received %u of %u bytes", totalBytesReceived,
-                         totalBytesExpected);
+                         totalBytesExpected.value_or(0));
                 updateState = UpdateState::Idle;
                 request->send(500, "text/plain", MSG_UPLOAD_INCOMPLETE);
                 return;
