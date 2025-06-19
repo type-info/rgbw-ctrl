@@ -1,4 +1,4 @@
 #pragma once
 #include <functional>
 
-void asyncCall(std::function<void()> callback, const uint32_t usStackDepth, const uint32_t delayMs);
+void async_call(std::function<void()> callback, uint32_t usStackDepth, uint32_t delayMs);

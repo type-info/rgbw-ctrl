@@ -19,15 +19,20 @@ class Output
         Light(static_cast<gpio_num_t>(static_cast<uint8_t>(Hardware::Pin::Output::WHITE)))
     };
 
-    std::function<void(std::array<uint8_t, 4>)> onChangeCallback;
+    std::function<void()> notifyBleCallback;
+    std::function<void()> notifyWebSocketCallback;
 
     static_assert(static_cast<size_t>(Color::White) < 4, "Color enum out of bounds");
 
-    void notifyChange() const
+    void notifyChange(const bool notifyBle = true) const
     {
-        if (onChangeCallback)
+        if (notifyBle && notifyBleCallback)
         {
-            onChangeCallback(getValues());
+            notifyBleCallback();
+        }
+        if (notifyWebSocketCallback)
+        {
+            notifyWebSocketCallback();
         }
     }
 
@@ -67,15 +72,28 @@ public:
         });
     }
 
-    void setOnChangeCallback(const std::function<void(std::array<uint8_t, 4>)>& callback)
+    void handle(const unsigned long now)
     {
-        onChangeCallback = callback;
+        for (auto& light : lights)
+        {
+            light.handle(now);
+        }
     }
 
-    void update(Color color, const uint8_t value, const bool notify = true)
+    void setNotifyBleCallback(const std::function<void()>& callback)
+    {
+        notifyBleCallback = callback;
+    }
+
+    void setNotifyWebSocketCallback(const std::function<void()>& callback)
+    {
+        notifyWebSocketCallback = callback;
+    }
+
+    void update(Color color, const uint8_t value, const bool notifyBle = true)
     {
         lights.at(static_cast<size_t>(color)).setValue(value);
-        if (notify) notifyChange();
+        notifyChange(notifyBle);
     }
 
     [[nodiscard]] bool getState(Color color) const
@@ -162,11 +180,11 @@ public:
         return output;
     }
 
-    void setValues(const std::array<uint8_t, 4>& array, const bool notify = true)
+    void setValues(const std::array<uint8_t, 4>& array, const bool notifyBle = true)
     {
         for (size_t i = 0; i < std::min(lights.size(), array.size()); ++i)
         {
-            update(static_cast<Color>(i), array[i], notify);
+            update(static_cast<Color>(i), array[i], notifyBle);
         }
     }
 
@@ -175,8 +193,7 @@ public:
         for (const auto& light : lights)
         {
             auto obj = to.add<JsonObject>();
-            obj["state"] = light.isOn() ? "on" : "off";
-            obj["value"] = light.getValue();
+            light.toJson(obj);
         }
     }
 };

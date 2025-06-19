@@ -3,35 +3,89 @@
 #include <Arduino.h>
 #include <Preferences.h>
 #include <cmath>
-#include <cstdlib>
+
 #include "hardware.hh"
+
+#pragma pack(push, 1)
+struct LightState
+{
+    bool enabled = false;
+    uint8_t value = 0;
+
+    bool operator ==(const LightState& other) const
+    {
+        return (enabled == other.enabled && value == other.value);
+    }
+
+    bool operator !=(const LightState& other) const
+    {
+        return !(*this == other);
+    }
+
+    void toJson(const JsonObject& to) const
+    {
+        to["state"] = enabled ? "on" : "off";
+        to["value"] = value;
+    }
+};
+#pragma pack(pop)
 
 class Light
 {
 public:
     static constexpr uint8_t ON_VALUE = 255;
     static constexpr uint8_t OFF_VALUE = 0;
+    static constexpr auto PREFERENCES_NAME = "light";
+
+    void setup()
+    {
+        prefs.begin(PREFERENCES_NAME, false);
+        if (const auto& channel = Hardware::getPwmChannel(pin))
+        {
+            pinMode(pin, OUTPUT);
+            ledcSetup(channel.value(), PWM_FREQUENCY, PWM_RESOLUTION);
+            ledcAttachPin(pin, channel.value());
+            restore();
+        }
+        else
+        {
+            ESP_LOGE("Light", "Invalid pin %d for PWM channel", static_cast<int>(pin));
+        }
+    }
+
+    void handle(const unsigned long now)
+    {
+        if (state != lastPersistedState && now - lastPersistTime >= PERSIST_DEBOUNCE_MS)
+        {
+            prefs.putBool(stateKey, state.enabled);
+            prefs.putUChar(valueKey, state.value);
+            lastPersistedState = state;
+            lastPersistTime = now;
+        }
+    }
 
 private:
     static constexpr uint32_t PWM_FREQUENCY = 25000;
     static constexpr uint8_t PWM_RESOLUTION = 8;
+    static constexpr unsigned long PERSIST_DEBOUNCE_MS = 500;
 
     bool invert;
-    bool state;
-    uint8_t value;
     gpio_num_t pin;
+    LightState state;
 
     char valueKey[5] = "";
     char stateKey[5] = "";
 
     std::optional<uint8_t> lastWrittenValue = std::nullopt;
-    bool lastPersistedState = false;
-    uint8_t lastPersistedValue = 255;
+
+    Preferences prefs;
+    LightState lastPersistedState;
+    unsigned long lastPersistTime = 0;
 
     void update()
     {
-        const auto& channel = Hardware::getPwmChannel(this->pin);
-        const auto duty = this->state ? this->value : OFF_VALUE;
+        const auto& channel = Hardware::getPwmChannel(pin);
+        const auto duty = state.enabled ? state.value : OFF_VALUE;
 
         if (uint8_t outputValue = invert ? ON_VALUE - duty : duty;
             !lastWrittenValue || outputValue != lastWrittenValue)
@@ -39,33 +93,12 @@ private:
             ledcWrite(channel.value(), outputValue);
             lastWrittenValue = outputValue;
         }
-
-        if (state != lastPersistedState || value != lastPersistedValue)
-        {
-            persist();
-            lastPersistedState = state;
-            lastPersistedValue = value;
-        }
-    }
-
-    void persist() const
-    {
-        Preferences prefs;
-        prefs.begin("light", false);
-        prefs.putBool(stateKey, state);
-        prefs.putUChar(valueKey, value);
-        prefs.end();
     }
 
     void restore()
     {
-        Preferences prefs;
-        prefs.begin("light", true);
-        state = prefs.getBool(stateKey, false);
-        value = prefs.getUChar(valueKey, OFF_VALUE);
-        prefs.end();
-        lastPersistedState = state;
-        lastPersistedValue = value;
+        state.enabled = prefs.getBool(stateKey, false);
+        state.value = prefs.getUChar(valueKey, OFF_VALUE);
         update();
     }
 
@@ -80,95 +113,68 @@ private:
 
 public:
     explicit Light(const gpio_num_t pin, const bool invert = false) :
-        invert(invert), state(false), value(OFF_VALUE), pin(pin)
+        invert(invert), pin(pin)
     {
         snprintf(stateKey, sizeof(stateKey), "%02us", static_cast<unsigned>(pin));
         snprintf(valueKey, sizeof(valueKey), "%02uv", static_cast<unsigned>(pin));
     }
 
-    void setup()
+    ~Light()
     {
-        if (const auto& channel = Hardware::getPwmChannel(pin))
-        {
-            pinMode(pin, OUTPUT);
-            ledcSetup(channel.value(), PWM_FREQUENCY, PWM_RESOLUTION);
-            ledcAttachPin(pin, channel.value());
-            restore();
-        }
-        else
-        {
-            ESP_LOGE("Light", "Invalid pin %d for PWM channel", static_cast<int>(pin));
-        }
+        prefs.end();
     }
 
     void toggle()
     {
-        this->state = !this->state;
-        if (this->state && this->value == OFF_VALUE)
+        state.enabled = !state.enabled;
+        if (state.enabled && state.value == OFF_VALUE)
         {
-            this->value = ON_VALUE;
+            state.value = ON_VALUE;
         }
-        this->update();
-    }
-
-    void toggle(const uint8_t value)
-    {
-        this->value = value;
-        this->state = value > 0;
-        this->update();
+        update();
     }
 
     void setValue(const uint8_t value)
     {
-        this->value = value;
-        if (value > OFF_VALUE && !this->state)
-            this->state = true;
+        state.value = value;
+        if (value > OFF_VALUE && !state.enabled)
+            state.enabled = true;
         if (value == OFF_VALUE)
-            this->state = false;
-        this->update();
+            state.enabled = false;
+        update();
     }
 
-    void setValue(const bool state, const uint8_t value)
+    void setState(const bool stateFlag)
     {
-        this->state = state;
-        this->value = value;
-        this->update();
-    }
-
-    void setState(const bool state)
-    {
-        this->state = state;
-        if (state && this->value == OFF_VALUE)
+        state.enabled = stateFlag;
+        if (stateFlag && state.value == OFF_VALUE)
         {
-            this->value = ON_VALUE;
+            state.value = ON_VALUE;
         }
-        this->update();
+        update();
     }
 
     void increaseBrightness()
     {
-        this->value = perceptualBrightnessStep(this->value, true);
-        this->state = true;
-        this->update();
+        state.value = perceptualBrightnessStep(state.value, true);
+        state.enabled = true;
+        update();
     }
 
     void decreaseBrightness()
     {
-        this->value = perceptualBrightnessStep(this->value, false);
-        if (this->value == OFF_VALUE)
-            this->state = false;
-        this->update();
+        state.value = perceptualBrightnessStep(state.value, false);
+        if (state.value == OFF_VALUE)
+            state.enabled = false;
+        update();
     }
 
-    void resetPreferences() const
+    void toJson(const JsonObject& to) const
     {
-        Preferences prefs;
-        prefs.begin("light", false);
-        prefs.remove(stateKey);
-        prefs.remove(valueKey);
-        prefs.end();
+        state.toJson(to);
     }
 
-    [[nodiscard]] bool isOn() const { return state; }
-    [[nodiscard]] uint8_t getValue() const { return value; }
+    [[nodiscard]] bool isOn() const { return state.enabled; }
+    [[nodiscard]] uint8_t getValue() const { return state.value; }
+    [[nodiscard]] LightState getState() const { return state; }
 };

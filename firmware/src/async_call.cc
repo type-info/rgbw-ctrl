@@ -5,27 +5,36 @@
 #include <freertos/FreeRTOS.h> // NOLINT
 #include <freertos/task.h>
 
+constexpr auto ASYNC_CALL_TAG = "AsyncCall";
+
 struct AsyncCallArgs
 {
     std::function<void()> callback;
     uint32_t delayMs;
 };
 
-void doCall(void* args) // NOLINT
+void doCall(void* args)
 {
-    const auto restartArgs = static_cast<const AsyncCallArgs*>(args);
-    delay(restartArgs->delayMs);
-    restartArgs->callback();
-    delete restartArgs;
-    vTaskDelete(nullptr);
+    const auto* callArgs = static_cast<AsyncCallArgs*>(args);
+
+    const TickType_t delayTicks = pdMS_TO_TICKS(callArgs->delayMs);
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    vTaskDelayUntil(&xLastWakeTime, delayTicks);
+
+    callArgs->callback();
+    delete callArgs;
+    vTaskDelete(nullptr); // Delete this task
 }
 
-void asyncCall(std::function<void()> callback, const uint32_t usStackDepth, const uint32_t delayMs)
+void async_call(
+    std::function<void()> callback,
+    const uint32_t usStackDepth,
+    const uint32_t delayMs)
 {
-    const auto args = new AsyncCallArgs{std::move(callback), delayMs};
-    if (xTaskCreate(doCall, "AsyncCallTask", usStackDepth, args, 1, nullptr) != pdPASS)
+    if (auto* args = new AsyncCallArgs{std::move(callback), delayMs};
+        xTaskCreate(doCall, "AsyncCallTask", usStackDepth, args, 1, nullptr) != pdPASS)
     {
-        ESP_LOGE("asyncCall", "Failed to create task");
+        ESP_LOGE(ASYNC_CALL_TAG, "Failed to create task");
         delete args;
     }
 }

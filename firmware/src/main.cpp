@@ -79,6 +79,7 @@ void loop()
     alexaIntegration.handle();
     webSocketHandler.handle();
     bleManager.handle(now);
+    output.handle(now);
 
     boardLED.handle(
         now,

@@ -59,11 +59,11 @@ public:
             case WS_EVT_DISCONNECT:
                 ESP_LOGD(LOG_TAG, "WebSocket client disconnected: %s", client->remoteIP().toString().c_str());
                 break;
-            case WS_EVT_ERROR:
-                ESP_LOGE(LOG_TAG, "WebSocket error: %s", client->remoteIP().toString().c_str());
-                break;
             case WS_EVT_PONG:
                 ESP_LOGD(LOG_TAG, "WebSocket pong received from client: %s", client->remoteIP().toString().c_str());
+                break;
+            case WS_EVT_ERROR:
+                ESP_LOGE(LOG_TAG, "WebSocket error: %s", client->remoteIP().toString().c_str());
                 break;
             case WS_EVT_DATA:
                 this->handleWebSocketMessage(server, client, arg, data, len);
@@ -76,6 +76,10 @@ public:
         bleManager.setBleStatusCallback([this](auto status)
         {
             this->sendBleStatusMessage(status);
+        });
+        output.setNotifyWebSocketCallback([this]()
+        {
+            this->sendOutputColorMessage();
         });
     }
 
@@ -230,7 +234,7 @@ private:
         )
         {
         case BleStatus::ADVERTISING:
-            asyncCall([this]()
+            async_call([this]()
             {
                 bleManager.start();
             }, 4096, 0);
@@ -279,6 +283,15 @@ private:
         const auto data = reinterpret_cast<const uint8_t*>(&message);
         ws.binaryAll(data, sizeof(message));
         ESP_LOGD(LOG_TAG, "Sent BLE status message: %d", status);
+    }
+
+    void sendOutputColorMessage()
+    {
+        const auto values = output.getValues();
+        const ColorMessage message(values);
+        ws.binaryAll(reinterpret_cast<const uint8_t*>(&message), sizeof(message));
+        ESP_LOGD(LOG_TAG, "Sent output color message: [%d, %d, %d, %d]",
+                 values[0], values[1], values[2], values[3]);
     }
 
 #pragma pack(push, 1)

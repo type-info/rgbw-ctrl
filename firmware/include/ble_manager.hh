@@ -122,10 +122,11 @@ public:
             deviceNameCharacteristic->notify();
         });
 
-        output.setOnChangeCallback([this](std::array<uint8_t, 4> output)
+        output.setNotifyBleCallback([this]()
         {
             if (!alexaColorCharacteristic) return;
-            alexaColorCharacteristic->setValue(output.data(), output.size());
+            auto values = output.getValues();
+            alexaColorCharacteristic->setValue(values.data(), values.size());
             alexaColorCharacteristic->notify();
         });
 
@@ -349,7 +350,7 @@ private:
             {
                 ESP_LOGW(LOG_TAG, "Device restart requested via BLE.");
                 net->server->disconnect(0);
-                asyncCall([]()
+                async_call([]()
                 {
                     esp_restart();
                 }, 1024, 100);
