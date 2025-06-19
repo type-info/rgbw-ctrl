@@ -36,6 +36,7 @@ The `AsyncAuthenticationMiddleware` handles access control.
 | --------- | ------ | --------- | ------------------------------------ |
 | `file`    | file   | ✅ Yes    | Binary file (firmware or filesystem) |
 | `name`    | string | ❌ No     | `filesystem` (default is firmware)   |
+| `md5`     | string | ❌ No     | 32-char hex string to validate file  |
 
 Example (firmware):
 
@@ -48,6 +49,46 @@ Example (filesystem):
 ```bash
 curl -u user:pass -F "name=filesystem" -F "file=@littlefs.bin" http://<device-ip>/update
 ```
+
+Example with MD5:
+
+```bash
+curl -u user:pass -F "file=@firmware.bin" "http://<device-ip>/update?md5=d41d8cd98f00b204e9800998ecf8427e"
+```
+
+---
+
+## MD5 Integrity Check (Optional but Recommended)
+
+To ensure the integrity of the uploaded file, the OTA handler supports an optional `md5` query parameter. This value is compared against the MD5 checksum calculated during the upload process. If they do not match, the update is aborted and an error is returned.
+
+### ✅ How to use
+
+Add the `md5` parameter to your request:
+
+```bash
+curl -u user:pass -F "file=@firmware.bin" "http://<device-ip>/update?md5=d41d8cd98f00b204e9800998ecf8427e"
+```
+
+You may also combine with the `name` parameter:
+
+```bash
+curl -u user:pass -F "file=@littlefs.bin" "http://<device-ip>/update?name=filesystem&md5=d41d8cd98f00b204e9800998ecf8427e"
+```
+
+### 🛠 Behavior
+
+- If provided, the handler calls `Update.setMD5()` before `Update.begin()`.
+- If the hash is invalid or doesn't match, `Update.end(true)` will fail.
+- A 500 error will be returned to the client, with a message such as:
+  ```
+  MD5 mismatch
+  ```
+
+### ⚠️ Note
+
+- The MD5 must be a 32-character hexadecimal string.
+- If the parameter is omitted, the firmware will proceed without integrity validation.
 
 ---
 
@@ -136,6 +177,7 @@ flowchart TD
 | Update.begin() failed         | 500           | Flash not available or corrupt       |
 | Upload incomplete             | 500           | Did not receive full file            |
 | Update.write() failed mid-way | 500           | Flash write error, possibly hardware |
+| MD5 mismatch                  | 500           | Checksum invalid or corrupt file     |
 
 ---
 

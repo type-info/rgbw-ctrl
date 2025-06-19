@@ -29,7 +29,7 @@ public:
         webServer.addHandler(restHandler)
                  .addMiddleware(&basicAuth);
         webServer.addHandler(alexaHandler);
-
+        // Alexa can't have authentication middleware
         webServer.serveStatic("/", LittleFS, "/")
                  .setDefaultFile("index.html")
                  .setTryGzipFirst(true)

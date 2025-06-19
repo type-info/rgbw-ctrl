@@ -112,6 +112,17 @@ private:
             if (request->hasHeader(CONTENT_LENGTH_HEADER))
                 totalBytesExpected = request->header(CONTENT_LENGTH_HEADER).toInt();
 
+            if (request->hasParam("md5", false))
+            {
+                const String& md5Param = request->getParam("md5")->value();
+                if (!Update.setMD5(md5Param.c_str()))
+                {
+                    setUpdateError("Invalid MD5 format");
+                    updateState = UpdateState::Failed;
+                    return true;
+                }
+            }
+
             request->onDisconnect([this]()
             {
                 if (updateState != UpdateState::Completed)

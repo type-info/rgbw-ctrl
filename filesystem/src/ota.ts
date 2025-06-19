@@ -38,7 +38,6 @@ updateBtn.addEventListener("click", async () => {
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
-    xhr.setRequestHeader("Content-Length", file.size.toString());
 
     xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
