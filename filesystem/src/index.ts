@@ -1,7 +1,13 @@
-import {sendBleStatus, sendColorMessage, webSocketHandlers, initWebSocket} from '../../app/src/app/web-socket.handler.ts';
+import {
+    sendBleStatus,
+    sendColorMessage,
+    webSocketHandlers,
+    initWebSocket
+} from '../../app/src/app/web-socket.handler.ts';
 import {WebSocketMessageType} from '../../app/src/app/websocket.message.ts';
 import {decodeWebSocketOnBleStatusMessage} from '../../app/src/app/decode.utils.ts';
 import {BleStatus} from '../../app/src/app/ble.model.ts';
+import {from, fromEvent, mergeMap, throttleTime} from "rxjs";
 
 const bluetoothButton = document.getElementById('bluetooth-toggle')!;
 bluetoothButton.addEventListener('click', () => {
@@ -21,10 +27,12 @@ function getColorValues(): [number, number, number, number] {
     return Array.from(sliders).map(s => parseInt(s.value, 10)) as [number, number, number, number];
 }
 
-sliders.forEach(slider => {
-    slider.addEventListener('input', () => {
-        sendColorMessage(...getColorValues());
-    });
+from(sliders).pipe(
+    mergeMap(slider => fromEvent(slider, 'input')),
+    throttleTime(200, undefined, {leading: true, trailing: true})
+).subscribe(() => {
+    sendColorMessage(...getColorValues());
 });
 
+// initWebSocket(`ws://localhost/ws`);
 initWebSocket(`ws://${location.host}/ws`);
