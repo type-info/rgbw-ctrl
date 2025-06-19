@@ -16,11 +16,7 @@ struct AsyncCallArgs
 void doCall(void* args)
 {
     const auto* callArgs = static_cast<AsyncCallArgs*>(args);
-
-    const TickType_t delayTicks = pdMS_TO_TICKS(callArgs->delayMs);
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-    vTaskDelayUntil(&xLastWakeTime, delayTicks);
-
+    delay(callArgs->delayMs);
     callArgs->callback();
     delete callArgs;
     vTaskDelete(nullptr); // Delete this task
