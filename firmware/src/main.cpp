@@ -40,7 +40,7 @@ void setup()
 {
     nvs_flash_init();
     boardLED.begin();
-    output.begin(webServerHandler);
+    output.begin();
     wifiManager.begin();
     otaHandler.begin(webServerHandler, &bleManager);
     wifiManager.setGotIpCallback([]()

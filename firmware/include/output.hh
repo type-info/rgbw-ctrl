@@ -8,7 +8,6 @@
 #include <Arduino.h>
 #include <algorithm>
 #include <functional>
-#include <webserver_handler.hh>
 
 class Output
 {
@@ -37,39 +36,16 @@ class Output
     }
 
 public:
-    void begin(WebServerHandler& webServerHandler)
+    [[nodiscard]] bool anyOn() const
+    {
+        return std::any_of(lights.begin(), lights.end(),
+                           [](const Light& light) { return light.isOn(); });
+    }
+
+    void begin()
     {
         for (auto& light : lights)
             light.setup();
-        webServerHandler.on("/color", HTTP_GET, [this](AsyncWebServerRequest* request)
-        {
-            auto r = this->getValue(Color::Red);
-            if (request->hasParam("r"))
-            {
-                r = std::max(std::min(request->getParam("r")->value().toInt(), 255l), 0l);
-            }
-            auto g = this->getValue(Color::Green);
-            if (request->hasParam("g"))
-            {
-                g = std::max(std::min(request->getParam("g")->value().toInt(), 255l), 0l);
-            }
-            auto b = this->getValue(Color::Blue);
-            if (request->hasParam("b"))
-            {
-                b = std::max(std::min(request->getParam("b")->value().toInt(), 255l), 0l);
-            }
-            auto w = this->getValue(Color::White);
-            if (request->hasParam("w"))
-            {
-                w = std::max(std::min(request->getParam("w")->value().toInt(), 255l), 0l);
-            }
-            this->setColor(r, g, b, w);
-            if (r > 0 || g > 0 || b > 0 || w > 0)
-            {
-                this->turnOn();
-            }
-            request->send(200, "text/plain", "Color set");
-        });
     }
 
     void handle(const unsigned long now)
@@ -121,11 +97,10 @@ public:
 
     void toggleAll()
     {
-        const bool anyOn = std::any_of(lights.begin(), lights.end(),
-                                       [](const Light& light) { return light.isOn(); });
+        const bool on = anyOn();
         for (auto& light : lights)
         {
-            if (anyOn)
+            if (on)
                 light.setState(false);
             else
                 light.setValue(Light::ON_VALUE);
