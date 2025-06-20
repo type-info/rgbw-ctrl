@@ -51,35 +51,7 @@ public:
                           const AwsEventType type, void* arg, const uint8_t* data,
                           const size_t len)
         {
-            switch (type)
-            {
-            case WS_EVT_CONNECT:
-                ESP_LOGD(LOG_TAG, "WebSocket client connected: %s", client->remoteIP().toString().c_str());
-                break;
-            case WS_EVT_DISCONNECT:
-                ESP_LOGD(LOG_TAG, "WebSocket client disconnected: %s", client->remoteIP().toString().c_str());
-                break;
-            case WS_EVT_PONG:
-                ESP_LOGD(LOG_TAG, "WebSocket pong received from client: %s", client->remoteIP().toString().c_str());
-                break;
-            case WS_EVT_ERROR:
-                ESP_LOGE(LOG_TAG, "WebSocket error: %s", client->remoteIP().toString().c_str());
-                break;
-            case WS_EVT_DATA:
-                this->handleWebSocketMessage(server, client, arg, data, len);
-                break;
-            default:
-                break;
-            }
-        });
-
-        bleManager.setBleStatusCallback([this](auto status)
-        {
-            this->sendBleStatusMessage(status);
-        });
-        output.setNotifyWebSocketCallback([this]()
-        {
-            this->sendOutputColorMessage();
+            this->handleWebSocketEvent(server, client, type, arg, data, len);
         });
     }
 
@@ -94,6 +66,32 @@ public:
     }
 
 private:
+    void handleWebSocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
+                              const AwsEventType type, void* arg, const uint8_t* data,
+                              const size_t len) const
+    {
+        switch (type)
+        {
+        case WS_EVT_CONNECT:
+            ESP_LOGD(LOG_TAG, "WebSocket client connected: %s", client->remoteIP().toString().c_str());
+            break;
+        case WS_EVT_DISCONNECT:
+            ESP_LOGD(LOG_TAG, "WebSocket client disconnected: %s", client->remoteIP().toString().c_str());
+            break;
+        case WS_EVT_PONG:
+            ESP_LOGD(LOG_TAG, "WebSocket pong received from client: %s", client->remoteIP().toString().c_str());
+            break;
+        case WS_EVT_ERROR:
+            ESP_LOGE(LOG_TAG, "WebSocket error: %s", client->remoteIP().toString().c_str());
+            break;
+        case WS_EVT_DATA:
+            this->handleWebSocketMessage(server, client, arg, data, len);
+            break;
+        default:
+            break;
+        }
+    }
+
     void handleWebSocketMessage(
         AsyncWebSocket* server,
         AsyncWebSocketClient* client,
@@ -121,7 +119,8 @@ private:
         }
         if (info->len != len)
         {
-            ESP_LOGD(LOG_TAG, "Received WebSocket message with unexpected length: expected %lld, got %d", info->len, len);
+            ESP_LOGD(LOG_TAG, "Received WebSocket message with unexpected length: expected %lld, got %d", info->len,
+                     len);
             return;
         }
         if (len < 1)

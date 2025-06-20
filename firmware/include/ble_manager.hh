@@ -69,8 +69,6 @@ class BleManager
     NimBLECharacteristic* alexaCharacteristic = nullptr;
     NimBLECharacteristic* alexaColorCharacteristic = nullptr;
 
-    std::function<void(BleStatus)> bleStatusCallback;
-
 public:
     explicit BleManager(Output& output, WiFiManager& wifiManager, AlexaIntegration& alexaIntegration,
                         WebServerHandler& webServerHandler)
@@ -132,7 +130,6 @@ public:
         const auto advertising = this->server->getAdvertising();
         advertising->setName(wifiManager.getDeviceName());
         advertising->start();
-        if (bleStatusCallback) bleStatusCallback(BleStatus::ADVERTISING);
         ESP_LOGI(LOG_TAG, "BLE advertising started with device name: %s", wifiManager.getDeviceName());
     }
 
@@ -165,7 +162,6 @@ public:
         if (this->server->getConnectedCount() > 0)
         {
             server->disconnect(0); // NOLINT
-            if (bleStatusCallback) bleStatusCallback(BleStatus::OFF);
             delay(100); // Allow client disconnect to propagate
         }
         esp_restart();
@@ -198,15 +194,6 @@ public:
     void toJson(const JsonObject& to) const
     {
         to["status"] = getStatusString();
-    }
-
-    void setBleStatusCallback(const std::function<void(BleStatus)>& callback)
-    {
-        bleStatusCallback = callback;
-        if (server != nullptr)
-        {
-            bleStatusCallback(getStatus());
-        }
     }
 
 private:
@@ -572,17 +559,9 @@ private:
         {
         }
 
-        void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override
-        {
-            if (net->bleStatusCallback)
-                net->bleStatusCallback(BleStatus::CONNECTED);
-        }
-
         void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override
         {
             pServer->getAdvertising()->start();
-            if (net->bleStatusCallback)
-                net->bleStatusCallback(BleStatus::ADVERTISING);
         }
     };
 };

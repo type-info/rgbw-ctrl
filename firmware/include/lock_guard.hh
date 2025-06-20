@@ -11,18 +11,18 @@ public:
     ~LockGuard() { xSemaphoreGive(sem); }
 };
 
-// Example of a custom lock implementation using FreeRTOS semaphores.
-class MyClass
-{
-
-    void protectedMethod()
-    {
-        LockGuard lock(getMutex());
-    }
-
-    static SemaphoreHandle_t& getMutex()
-    {
-        static SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
-        return mutex;
-    }
-};
+// example of a custom lock implementation using FreeRTOS semaphores.
+// class MyClass
+// {
+//
+//     void protectedMethod()
+//     {
+//         LockGuard lock(getMutex());
+//     }
+//
+//     static SemaphoreHandle_t& getMutex()
+//     {
+//         static SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
+//         return mutex;
+//     }
+// };

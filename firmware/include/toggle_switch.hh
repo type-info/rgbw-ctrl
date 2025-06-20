@@ -18,7 +18,7 @@ private:
     TaskHandle_t taskHandle = nullptr;
     std::function<void(bool)> callback;
 
-    static void taskLoop(void *arg)
+    [[noreturn]] static void taskLoop(void *arg)
     {
         auto *self = static_cast<ToggleSwitch *>(arg);
         for (;;)
@@ -29,7 +29,7 @@ private:
     }
 
 public:
-    ToggleSwitch(gpio_num_t pin) : pin(pin)
+    explicit ToggleSwitch(gpio_num_t pin) : pin(pin)
     {
         pinMode(pin, INPUT_PULLUP);
         state = digitalRead(pin) == HIGH;

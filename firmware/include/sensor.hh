@@ -8,7 +8,7 @@ private:
     gpio_num_t pin;
 
 public:
-    explicit Sensor(gpio_num_t pin) : pin(pin)
+    explicit Sensor(const gpio_num_t pin) : pin(pin)
     {
         pinMode(pin, INPUT);
     }
