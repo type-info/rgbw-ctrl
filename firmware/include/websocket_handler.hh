@@ -2,6 +2,7 @@
 
 #include "wifi_model.hh"
 #include "ble_manager.hh"
+#include "throttled_value.hh"
 
 enum class WebSocketMessageType : uint8_t
 {
@@ -30,8 +31,7 @@ class WebSocketHandler
 
     AsyncWebSocket ws = AsyncWebSocket("/ws");
 
-    std::array<LightState, 4> lastSentOutputState;
-    unsigned long lastSendOutputStateTime = 0;
+    ThrottledValue<std::array<LightState, 4>> outputThrottle{100};
 
 public:
     WebSocketHandler(
@@ -72,12 +72,13 @@ public:
 private:
     void handleWebSocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
                               const AwsEventType type, void* arg, const uint8_t* data,
-                              const size_t len) const
+                              const size_t len)
     {
         switch (type)
         {
         case WS_EVT_CONNECT:
             ESP_LOGD(LOG_TAG, "WebSocket client connected: %s", client->remoteIP().toString().c_str());
+            sendAllMessages(client);
             break;
         case WS_EVT_DISCONNECT:
             ESP_LOGD(LOG_TAG, "WebSocket client disconnected: %s", client->remoteIP().toString().c_str());
@@ -288,18 +289,28 @@ private:
         ESP_LOGD(LOG_TAG, "Sent BLE status message: %u", static_cast<uint8_t>(status));
     }
 
-    void sendOutputColorMessage(const unsigned long now)
+    void sendAllMessages(AsyncWebSocketClient* client)
+    {
+        sendOutputColorMessage(millis(), client);
+    }
+
+    void sendOutputColorMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
     {
         const auto state = output.getState();
-        if (state == lastSentOutputState || (now - lastSendOutputStateTime) < 100)
+        if (!outputThrottle.shouldSend(now, state) && !client)
             return;
 
         const ColorMessage message(state);
-        if (AsyncWebSocket::SendStatus::ENQUEUED ==
-            ws.binaryAll(reinterpret_cast<const uint8_t*>(&message), sizeof(message)))
+        const auto data = reinterpret_cast<const uint8_t*>(&message);
+        constexpr size_t len = sizeof(message);
+
+        if (client)
         {
-            lastSentOutputState = state;
-            lastSendOutputStateTime = now;
+            client->binary(data, len);
+        }
+        else if (AsyncWebSocket::SendStatus::ENQUEUED == ws.binaryAll(data, len))
+        {
+            outputThrottle.setLastSent(now, state);
         }
     }
 
