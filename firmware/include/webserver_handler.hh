@@ -19,21 +19,24 @@ class WebServerHandler
 
     AsyncWebServer webServer = AsyncWebServer(80);
 
-    AsyncAuthenticationMiddleware basicAuth;
+    AsyncAuthenticationMiddleware authMiddleware;
 
 public:
     void begin(AsyncWebHandler* alexaHandler, AsyncWebHandler* ws, AsyncWebHandler* restHandler)
     {
         webServer.addHandler(ws)
-                 .addMiddleware(&basicAuth);
+                 .addMiddleware(&authMiddleware);
+
         webServer.addHandler(restHandler)
-                 .addMiddleware(&basicAuth);
+                 .addMiddleware(&authMiddleware);
+
         webServer.addHandler(alexaHandler);
         // Alexa can't have authentication middleware
+
         webServer.serveStatic("/", LittleFS, "/")
                  .setDefaultFile("index.html")
                  .setTryGzipFirst(true)
-                 .addMiddleware(&basicAuth);
+                 .addMiddleware(&authMiddleware);
 
         updateServerCredentials(getCredentials());
         webServer.begin();
@@ -46,30 +49,7 @@ public:
 
     [[nodiscard]] AsyncAuthenticationMiddleware& getAuthenticationMiddleware()
     {
-        return basicAuth;
-    }
-
-    void onNotFound(ArRequestHandlerFunction fn)
-    {
-        webServer.onNotFound(std::move(fn));
-    }
-
-    AsyncCallbackWebHandler& on(const char* uri, ArRequestHandlerFunction onRequest)
-    {
-        auto& handler = webServer.on(uri, std::move(onRequest));
-        handler.addMiddleware(&basicAuth);
-        return handler;
-    }
-
-    AsyncCallbackWebHandler& on(
-        const char* uri, const WebRequestMethodComposite method, ArRequestHandlerFunction onRequest,
-        ArUploadHandlerFunction onUpload = nullptr,
-        ArBodyHandlerFunction onBody = nullptr
-    )
-    {
-        auto& handler = webServer.on(uri, method, std::move(onRequest), std::move(onUpload), std::move(onBody));
-        handler.addMiddleware(&basicAuth);
-        return handler;
+        return authMiddleware;
     }
 
     void updateCredentials(const HttpCredentials& credentials)
@@ -107,12 +87,12 @@ public:
 private:
     void updateServerCredentials(const HttpCredentials& credentials)
     {
-        basicAuth.setUsername(credentials.username);
-        basicAuth.setPassword(credentials.password);
-        basicAuth.setRealm("rgbw-ctrl");
-        basicAuth.setAuthFailureMessage("Authentication failed");
-        basicAuth.setAuthType(AsyncAuthType::AUTH_BASIC);
-        basicAuth.generateHash();
+        authMiddleware.setUsername(credentials.username);
+        authMiddleware.setPassword(credentials.password);
+        authMiddleware.setRealm("rgbw-ctrl");
+        authMiddleware.setAuthFailureMessage("Authentication failed");
+        authMiddleware.setAuthType(AsyncAuthType::AUTH_BASIC);
+        authMiddleware.generateHash();
     }
 
     [[nodiscard]] static String generateRandomPassword()

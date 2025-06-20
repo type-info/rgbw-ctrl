@@ -9,6 +9,11 @@
 #include "ble_manager.hh"
 #include "ota_handler.hh"
 
+enum class RestEndpoint
+{
+    State, Color, Bluetooth, Restart, Reset, Unknown
+};
+
 class RestHandler
 {
     Output& output;
@@ -82,14 +87,21 @@ public:
 
     void handleBluetoothRequest(AsyncWebServerRequest* request) const
     {
-        auto state = request->getParam("state")->value() == "on";
-        request->onDisconnect([this,state]()
+        if (!request->hasParam("state"))
         {
-            if (state == true)
+            request->send(400, "text/plain", "Missing parameter: state");
+            return;
+        }
+
+        auto state = request->getParam("state")->value() == "on";
+        request->onDisconnect([this, state]()
+        {
+            if (state)
                 bleManager.start();
             else
                 bleManager.stop();
         });
+
         if (state)
             request->send(200, "text/plain", "Bluetooth enabled");
         else
@@ -109,10 +121,10 @@ public:
     uint8_t extractParam(const AsyncWebServerRequest* req, const char* key, const Color color) const
     {
         if (req->hasParam(key))
-            return std::clamp(req->getParam(key)->value().toInt(), 0l, 255l);
+            return std::clamp(static_cast<uint8_t>(req->getParam(key)->value().toInt()),
+                              static_cast<uint8_t>(0), static_cast<uint8_t>(255));
         return output.getValue(color);
     }
-
 
     class AsyncRestWebHandler final : public AsyncWebHandler
     {
@@ -131,31 +143,37 @@ public:
 
         void handleRequest(AsyncWebServerRequest* request) override
         {
-            const auto type = request->url().substring(5);
-            if (type == "/state")
+            const auto path = request->url().substring(5);
+            switch (getEndpoint(path))
             {
+            case RestEndpoint::State:
                 restHandler->handleStateRequest(request);
-            }
-            else if (type == "/color")
-            {
+                break;
+            case RestEndpoint::Color:
                 restHandler->handleColorRequest(request);
-            }
-            else if (type == "/bluetooth")
-            {
+                break;
+            case RestEndpoint::Bluetooth:
                 restHandler->handleBluetoothRequest(request);
-            }
-            else if (type == "/system/restart")
-            {
+                break;
+            case RestEndpoint::Restart:
                 restHandler->handleRestartRequest(request);
-            }
-            else if (type == "/system/reset")
-            {
+                break;
+            case RestEndpoint::Reset:
                 restHandler->handleResetRequest(request);
-            }
-            else
-            {
+                break;
+            default:
                 request->send(404, "text/plain", "Not Found");
             }
+        }
+
+        static RestEndpoint getEndpoint(const String& path)
+        {
+            if (path == "/state") return RestEndpoint::State;
+            if (path == "/color") return RestEndpoint::Color;
+            if (path == "/bluetooth") return RestEndpoint::Bluetooth;
+            if (path == "/system/restart") return RestEndpoint::Restart;
+            if (path == "/system/reset") return RestEndpoint::Reset;
+            return RestEndpoint::Unknown;
         }
     };
 };
