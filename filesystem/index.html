@@ -1,40 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Home rgbw-ctrl</title>
-    <link rel="stylesheet" href="src/index.scss">
+    <link rel="stylesheet" href="src/index.scss"/>
+    <link rel="shortcut icon" href="/icon.svg" type="image/svg">
 </head>
-
 <body>
 <h1>
-    <img src="/icon.svg" alt="TypeInfo">
+    <img src="/icon.svg" alt="Device Icon"/>
     rgbw-ctrl
 </h1>
-<div>
+
+<section id="device-info">
+    <p><strong>Device Name:</strong> <span id="device-name">Loading...</span></p>
+    <p><strong>Firmware Version:</strong> <span id="firmware-version">Loading...</span></p>
+    <p><strong>Heap:</strong> <span id="heap">Loading...</span> bytes</p>
+</section>
+
+<section id="wifi-info">
+    <h2>Wi-Fi</h2>
+    <p><strong>Status:</strong> <span id="wifi-status">Loading...</span></p>
+    <ul>
+        <li><strong>SSID:</strong> <span id="wifi-ssid">-</span></li>
+        <li><strong>MAC:</strong> <span id="wifi-mac">-</span></li>
+        <li><strong>IP:</strong> <span id="wifi-ip">-</span></li>
+        <li><strong>Gateway:</strong> <span id="wifi-gateway">-</span></li>
+        <li><strong>Subnet:</strong> <span id="wifi-subnet">-</span></li>
+        <li><strong>DNS:</strong> <span id="wifi-dns">-</span></li>
+    </ul>
+</section>
+
+<section id="alexa-info">
+    <h2>Alexa Integration</h2>
+    <p><strong>Mode:</strong> <span id="alexa-mode">Loading...</span></p>
+    <p><strong>Names:</strong> <span id="alexa-names">Loading...</span></p>
+</section>
+
+<section id="ble-info">
+    <h2>Bluetooth</h2>
+    <p><strong>Status:</strong> <span id="ble-status">Loading...</span></p>
+</section>
+
+<section id="ota-info">
+    <h2>OTA</h2>
+    <p><strong>Status:</strong> <span id="ota-status">Loading...</span></p>
+</section>
+
+<section class="controls">
     <a href="/ota.html">Firmware Update</a>
-    <a href="#">Restart</a>
-    <button id="bluetooth-toggle">Bluetooth: OFF</button>
-    <a href="#">Factory reset</a>
-    <label class="slider-label r">
+    <button id="restart-btn">Restart</button>
+    <button id="bluetooth-toggle" data-enabled="false">Bluetooth: OFF</button>
+    <button id="reset-btn">Factory Reset</button>
+</section>
+
+<section id="light-controls">
+    <h2>Light Control</h2>
+    <label class="slider-label r" for="slider-r">
         <span>0%</span>
-        <input type="range" min="0" max="255" value="0">
+        <input id="slider-r" type="range" min="0" max="255" value="0"/>
     </label>
-    <label class="slider-label g">
+    <label class="slider-label g" for="slider-g">
         <span>0%</span>
-        <input type="range" min="0" max="255" value="0">
+        <input id="slider-g" type="range" min="0" max="255" value="0"/>
     </label>
-    <label class="slider-label b">
+    <label class="slider-label b" for="slider-b">
         <span>0%</span>
-        <input type="range" min="0" max="255" value="0">
+        <input id="slider-b" type="range" min="0" max="255" value="0"/>
     </label>
-    <label class="slider-label w">
+    <label class="slider-label w" for="slider-w">
         <span>0%</span>
-        <input type="range" min="0" max="255" value="0">
+        <input id="slider-w" type="range" min="0" max="255" value="0"/>
     </label>
-</div>
+</section>
+
 <script type="module" src="src/index.ts"></script>
 </body>
 

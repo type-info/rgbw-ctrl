@@ -3,10 +3,9 @@ import {pipeline} from 'stream';
 import {createReadStream, createWriteStream} from 'fs';
 import {mkdir, readdir, stat, rm} from 'fs/promises';
 import {promisify} from 'util';
-import {exec} from 'child_process';
+import {execSync} from 'child_process';
 import path from 'path';
 
-const execAsync = promisify(exec);
 const pipe = promisify(pipeline);
 
 const sourceDir = path.resolve('./dist');
@@ -14,7 +13,7 @@ const outputDir = path.resolve('../firmware/data');
 
 try {
     console.log('📦 Building resources with Vite...');
-    await execAsync('npm run build:vite');
+    execSync('npm run build:vite', {stdio: 'inherit'});
 
     await ensureOutputDir();
     const contentFiles = await getFilesToCompress(sourceDir);
@@ -57,7 +56,9 @@ async function compressFile(input, output, name) {
             createGzip(),
             createWriteStream(output)
         );
-        console.log(`✔ Compressed: ${name} → ${output}`);
+        const {size} = await stat(output);
+        const kb = (size / 1024).toFixed(2);
+        console.log(`✔ Compressed: ${kb}KB ${name} → ${output}`);
     } catch (err) {
         console.error(`✖ Failed to compress: ${name}`, err);
     }
