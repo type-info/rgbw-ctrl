@@ -1,3 +1,5 @@
+import { LightState } from "../../app/src/app/light.model";
+
 export type WiFiStatusString =
     | "DISCONNECTED"
     | "CONNECTED"
@@ -23,11 +25,6 @@ export type OtaStatusString =
     | "Update in progress"
     | "Update completed successfully"
     | "Update failed";
-
-export type LightState = {
-    "state": "off" | "on",
-    "value": number
-}
 
 export type DeviceState = {
     "deviceName": string,

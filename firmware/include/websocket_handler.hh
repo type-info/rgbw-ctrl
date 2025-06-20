@@ -30,6 +30,9 @@ class WebSocketHandler
 
     AsyncWebSocket ws = AsyncWebSocket("/ws");
 
+    std::array<LightState, 4> lastSentOutputState;
+    unsigned long lastSendOutputStateTime = 0;
+
 public:
     WebSocketHandler(
         Output& output,
@@ -55,9 +58,10 @@ public:
         });
     }
 
-    void handle()
+    void handle(const unsigned long now)
     {
         ws.cleanupClients();
+        sendOutputColorMessage(now);
     }
 
     AsyncWebHandler* getAsyncWebHandler()
@@ -202,7 +206,7 @@ private:
     {
         if (len < sizeof(ColorMessage)) return;
         const auto* message = reinterpret_cast<const ColorMessage*>(data);
-        output.setValues(message->values);
+        output.setState(message->values);
     }
 
     void handleHttpCredentialsMessage(AsyncWebSocketClient* client, const uint8_t* data, const size_t len) const
@@ -284,14 +288,21 @@ private:
         ESP_LOGD(LOG_TAG, "Sent BLE status message: %u", static_cast<uint8_t>(status));
     }
 
-    void sendOutputColorMessage()
+    void sendOutputColorMessage(const unsigned long now)
     {
-        const auto values = output.getValues();
-        const ColorMessage message(values);
-        ws.binaryAll(reinterpret_cast<const uint8_t*>(&message), sizeof(message));
-        ESP_LOGD(LOG_TAG, "Sent output color message: [%d, %d, %d, %d]",
-                 values[0], values[1], values[2], values[3]);
+        const auto state = output.getState();
+        if (state == lastSentOutputState || (now - lastSendOutputStateTime) < 100)
+            return;
+
+        const ColorMessage message(state);
+        if (AsyncWebSocket::SendStatus::ENQUEUED ==
+            ws.binaryAll(reinterpret_cast<const uint8_t*>(&message), sizeof(message)))
+        {
+            lastSentOutputState = state;
+            lastSendOutputStateTime = now;
+        }
     }
+
 
 #pragma pack(push, 1)
     struct Message
@@ -305,9 +316,9 @@ private:
 
     struct ColorMessage : Message
     {
-        std::array<uint8_t, 4> values;
+        const std::array<LightState, 4> values;
 
-        explicit ColorMessage(const std::array<uint8_t, 4>& values)
+        explicit ColorMessage(const std::array<LightState, 4>& values)
             : Message(WebSocketMessageType::ON_COLOR), values(values)
         {
         }

@@ -1,10 +1,8 @@
-// TypeScript interfaces for WebSocket messages
-// These should mirror the binary message formats used in WebSocketHandler
-
 import { AlexaIntegrationSettings } from "./alexa-integration-settings.model";
 import { HttpCredentials } from "./http-credentials.model";
 import { WiFiConnectionDetails, WiFiScanStatus, WiFiStatus } from "./wifi.model";
 import {BleStatus} from './ble.model';
+import {LightState} from './light.model';
 
 export enum WebSocketMessageType {
   ON_COLOR = 0,
@@ -21,7 +19,7 @@ export enum WebSocketMessageType {
 
 export interface WebSocketColorMessage {
   type: WebSocketMessageType.ON_COLOR;
-  values: [number, number, number, number];
+  values: [LightState, LightState, LightState, LightState];
 }
 
 export interface WebSocketHttpCredentialsMessage {

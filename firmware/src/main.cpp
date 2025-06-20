@@ -76,7 +76,7 @@ void loop()
 
     boardButton.handle(now);
     alexaIntegration.handle();
-    webSocketHandler.handle();
+    webSocketHandler.handle(now);
     bleManager.handle(now);
     output.handle(now);
 

@@ -19,7 +19,6 @@ class Output
     };
 
     std::function<void()> notifyBleCallback;
-    std::function<void()> notifyWebSocketCallback;
 
     static_assert(static_cast<size_t>(Color::White) < 4, "Color enum out of bounds");
 
@@ -28,10 +27,6 @@ class Output
         if (notifyBle && notifyBleCallback)
         {
             notifyBleCallback();
-        }
-        if (notifyWebSocketCallback)
-        {
-            notifyWebSocketCallback();
         }
     }
 
@@ -61,15 +56,24 @@ public:
         notifyBleCallback = callback;
     }
 
-    void setNotifyWebSocketCallback(const std::function<void()>& callback)
-    {
-        notifyWebSocketCallback = callback;
-    }
-
     void update(Color color, const uint8_t value, const bool notifyBle = true)
     {
         lights.at(static_cast<size_t>(color)).setValue(value);
         notifyChange(notifyBle);
+    }
+
+    std::array<LightState, 4> getState() const
+    {
+        std::array<LightState, 4> state;
+        std::transform(lights.begin(), lights.end(), state.begin(),
+                       [](const Light& light) { return light.getState(); });
+        return state;
+    }
+
+    void setState(const std::array<LightState, 4> state)
+    {
+        for (uint8_t i = 0; i < 4; ++i)
+            lights[i].setState(state[i]);
     }
 
     [[nodiscard]] bool getState(Color color) const

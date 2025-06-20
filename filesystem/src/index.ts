@@ -1,6 +1,10 @@
 import {getState, restartSystem, resetSystem, setBluetoothState} from "./rest-api.ts";
-import {initWebSocket, sendColorMessage} from "../../app/src/app/web-socket.handler.ts";
+import {initWebSocket, sendColorMessage, webSocketHandlers} from "../../app/src/app/web-socket.handler.ts";
 import {from, fromEvent, map, mergeMap, tap, throttleTime} from "rxjs";
+import {decodeWebSocketOnColorMessage} from "../../app/src/app/decode.utils.ts"
+import {WebSocketMessageType} from "../../app/src/app/websocket.message.ts"
+
+const sliders = document.querySelectorAll<HTMLInputElement>('label.slider-label input[type="range"]');
 
 function updateSliderVisual(slider: HTMLInputElement, color: string) {
     const [_, r, g, b] = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/)!;
@@ -12,7 +16,7 @@ function updateSliderVisual(slider: HTMLInputElement, color: string) {
 }
 
 function initializeSliders(): void {
-    from(document.querySelectorAll('label.slider-label input[type="range"]')).pipe(
+    from(sliders).pipe(
         mergeMap(slider => fromEvent(slider, 'input')),
         tap(event => {
             const slider = event.target as HTMLInputElement;
@@ -56,17 +60,6 @@ async function loadDeviceState(): Promise<void> {
 
         updateText("ble-status", state.ble.status);
         updateText("ota-status", state.ota.state);
-
-        const sliders = document.querySelectorAll<HTMLInputElement>('label.slider-label input[type="range"]');
-        state.output.forEach((ch, i) => {
-            const slider = sliders[i];
-            if (slider) {
-                slider.value = ch.value.toString();
-                const color = getComputedStyle(slider.closest(".slider-label")!).getPropertyValue("--color").trim();
-                updateSliderVisual(slider, color);
-            }
-        });
-
     } catch (error) {
         console.error("Failed to load device state", error);
     }
@@ -112,3 +105,12 @@ initializeSliders();
 setupBluetoothToggle();
 setupSystemButtons();
 initWebSocket(`ws://${location.host}/ws`);
+
+webSocketHandlers.set(WebSocketMessageType.ON_COLOR, (message: ArrayBuffer) => {
+    const values = decodeWebSocketOnColorMessage(message).values;
+    values.forEach(({on, value}, index) => {
+        const slider = sliders[index];
+        slider.value = value.toString();
+        updateSliderVisual(slider, getComputedStyle(slider.closest(".slider-label")!).getPropertyValue("--color").trim());
+    })
+});

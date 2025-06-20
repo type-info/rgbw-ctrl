@@ -9,12 +9,12 @@
 #pragma pack(push, 1)
 struct LightState
 {
-    bool enabled = false;
+    bool on = false;
     uint8_t value = 0;
 
     bool operator ==(const LightState& other) const
     {
-        return (enabled == other.enabled && value == other.value);
+        return (on == other.on && value == other.value);
     }
 
     bool operator !=(const LightState& other) const
@@ -24,7 +24,7 @@ struct LightState
 
     void toJson(const JsonObject& to) const
     {
-        to["state"] = enabled ? "on" : "off";
+        to["on"] = on;
         to["value"] = value;
     }
 };
@@ -57,7 +57,7 @@ public:
     {
         if (state != lastPersistedState && now - lastPersistTime >= PERSIST_DEBOUNCE_MS)
         {
-            prefs.putBool(stateKey, state.enabled);
+            prefs.putBool(onKey, state.on);
             prefs.putUChar(valueKey, state.value);
             lastPersistedState = state;
             lastPersistTime = now;
@@ -73,8 +73,8 @@ private:
     gpio_num_t pin;
     LightState state;
 
+    char onKey[5] = "";
     char valueKey[5] = "";
-    char stateKey[5] = "";
 
     std::optional<uint8_t> lastWrittenValue = std::nullopt;
 
@@ -85,7 +85,7 @@ private:
     void update()
     {
         const auto& channel = Hardware::getPwmChannel(pin);
-        const auto duty = state.enabled ? state.value : OFF_VALUE;
+        const auto duty = state.on ? state.value : OFF_VALUE;
 
         if (uint8_t outputValue = invert ? ON_VALUE - duty : duty;
             !lastWrittenValue || outputValue != lastWrittenValue)
@@ -97,7 +97,7 @@ private:
 
     void restore()
     {
-        state.enabled = prefs.getBool(stateKey, false);
+        state.on = prefs.getBool(onKey, false);
         state.value = prefs.getUChar(valueKey, OFF_VALUE);
         update();
     }
@@ -115,7 +115,7 @@ public:
     explicit Light(const gpio_num_t pin, const bool invert = false) :
         invert(invert), pin(pin)
     {
-        snprintf(stateKey, sizeof(stateKey), "%02us", static_cast<unsigned>(pin));
+        snprintf(onKey, sizeof(onKey), "%02uo", static_cast<unsigned>(pin));
         snprintf(valueKey, sizeof(valueKey), "%02uv", static_cast<unsigned>(pin));
     }
 
@@ -126,8 +126,8 @@ public:
 
     void toggle()
     {
-        state.enabled = !state.enabled;
-        if (state.enabled && state.value == OFF_VALUE)
+        state.on = !state.on;
+        if (state.on && state.value == OFF_VALUE)
         {
             state.value = ON_VALUE;
         }
@@ -137,16 +137,16 @@ public:
     void setValue(const uint8_t value)
     {
         state.value = value;
-        if (value > OFF_VALUE && !state.enabled)
-            state.enabled = true;
+        if (value > OFF_VALUE && !state.on)
+            state.on = true;
         if (value == OFF_VALUE)
-            state.enabled = false;
+            state.on = false;
         update();
     }
 
     void setState(const bool stateFlag)
     {
-        state.enabled = stateFlag;
+        state.on = stateFlag;
         if (stateFlag && state.value == OFF_VALUE)
         {
             state.value = ON_VALUE;
@@ -157,7 +157,7 @@ public:
     void increaseBrightness()
     {
         state.value = perceptualBrightnessStep(state.value, true);
-        state.enabled = true;
+        state.on = true;
         update();
     }
 
@@ -165,7 +165,7 @@ public:
     {
         state.value = perceptualBrightnessStep(state.value, false);
         if (state.value == OFF_VALUE)
-            state.enabled = false;
+            state.on = false;
         update();
     }
 
@@ -174,7 +174,13 @@ public:
         state.toJson(to);
     }
 
-    [[nodiscard]] bool isOn() const { return state.enabled; }
+    void setState(const LightState& state)
+    {
+        this->state = state;
+        update();
+    }
+
+    [[nodiscard]] bool isOn() const { return state.on; }
     [[nodiscard]] uint8_t getValue() const { return state.value; }
     [[nodiscard]] LightState getState() const { return state; }
 };
