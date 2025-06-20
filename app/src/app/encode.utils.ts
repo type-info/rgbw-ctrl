@@ -114,11 +114,11 @@ export function encodeHttpCredentialsMessage(credentials: HttpCredentials): Uint
   return buffer;
 }
 
-export function encodeDeviceNameMessage(deviceName: string, maxLength: number): Uint8Array {
-  const buffer = new Uint8Array(1 + maxLength + 1);
+export function encodeDeviceNameMessage(deviceName: string): Uint8Array {
+  const buffer = new Uint8Array(1 + 28 + 1);
   const writer = new BufferWriter(buffer);
   writer.writeUint8(WebSocketMessageType.ON_DEVICE_NAME);
-  writer.writeCString(deviceName, maxLength);
+  writer.writeCString(deviceName, 28);
   return buffer;
 }
 

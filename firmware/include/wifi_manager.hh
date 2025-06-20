@@ -11,6 +11,7 @@
 #include "wifi_model.hh"
 
 #define DEVICE_NAME_MAX_LENGTH 28
+#define DEVICE_NAME_TOTAL_LENGTH (DEVICE_NAME_MAX_LENGTH + 1)
 #define DEVICE_BASE_NAME "rgbw-ctrl-"
 
 class WiFiManager
@@ -31,7 +32,7 @@ class WiFiManager
     std::function<void(char*)> deviceNameChanged;
     std::function<void()> gotIpChanged;
 
-    char deviceName[DEVICE_NAME_MAX_LENGTH + 1] = {};
+    char deviceName[DEVICE_NAME_TOTAL_LENGTH] = {};
 
 public:
     void begin()
@@ -193,7 +194,7 @@ public:
 
         std::lock_guard<std::mutex> lock(getDeviceNameMutex());
 
-        char safeName[DEVICE_NAME_MAX_LENGTH + 1];
+        char safeName[DEVICE_NAME_TOTAL_LENGTH];
         std::strncpy(safeName, name, DEVICE_NAME_MAX_LENGTH);
         safeName[DEVICE_NAME_MAX_LENGTH] = '\0';
 
@@ -473,14 +474,14 @@ private:
         prefs.begin(PREFERENCES_NAME, true);
         if (prefs.isKey("deviceName"))
         {
-            prefs.getString("deviceName", deviceName, DEVICE_NAME_MAX_LENGTH + 1);
+            prefs.getString("deviceName", deviceName, DEVICE_NAME_TOTAL_LENGTH);
             prefs.end();
             return deviceName;
         }
         prefs.end();
         uint8_t mac[6];
         WiFi.macAddress(mac);
-        snprintf(deviceName, DEVICE_NAME_MAX_LENGTH + 1,
+        snprintf(deviceName, DEVICE_NAME_TOTAL_LENGTH,
                  DEVICE_BASE_NAME "%02X%02X%02X", mac[3], mac[4], mac[5]);
         return deviceName;
     }

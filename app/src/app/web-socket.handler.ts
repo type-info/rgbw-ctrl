@@ -14,8 +14,7 @@ import {} from "./decode.utils";
 import {WebSocketMessageType} from "./websocket.message";
 import {WiFiConnectionDetails} from "./wifi.model";
 
-const DEVICE_NAME_MAX_LENGTH = 31;
-const RECONNECT_INTERVAL = 5000; // ms
+const RECONNECT_INTERVAL = 1000; // ms
 
 export const webSocketHandlers = new Map<WebSocketMessageType, (data: ArrayBuffer) => void>();
 
@@ -82,7 +81,7 @@ export function sendColorMessage(r: number, g: number, b: number, w: number): vo
 }
 
 export function sendDeviceName(name: string): void {
-  const buffer = encodeDeviceNameMessage(name, DEVICE_NAME_MAX_LENGTH);
+  const buffer = encodeDeviceNameMessage(name);
   send(buffer);
 }
 

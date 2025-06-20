@@ -32,6 +32,8 @@ class WebSocketHandler
     AsyncWebSocket ws = AsyncWebSocket("/ws");
 
     ThrottledValue<std::array<LightState, 4>> outputThrottle{100};
+    ThrottledValue<BleStatus> bleStatusThrottle{100};
+    ThrottledValue<std::array<char, DEVICE_NAME_TOTAL_LENGTH>> deviceNameThrottle{100};
 
 public:
     WebSocketHandler(
@@ -61,7 +63,7 @@ public:
     void handle(const unsigned long now)
     {
         ws.cleanupClients();
-        sendOutputColorMessage(now);
+        sendAllMessages(now);
     }
 
     AsyncWebHandler* getAsyncWebHandler()
@@ -78,7 +80,7 @@ private:
         {
         case WS_EVT_CONNECT:
             ESP_LOGD(LOG_TAG, "WebSocket client connected: %s", client->remoteIP().toString().c_str());
-            sendAllMessages(client);
+            sendAllMessages(millis(), client);
             break;
         case WS_EVT_DISCONNECT:
             ESP_LOGD(LOG_TAG, "WebSocket client disconnected: %s", client->remoteIP().toString().c_str());
@@ -244,7 +246,12 @@ private:
             }, 4096, 0);
             break;
         case BleStatus::OFF:
-            bleManager.stop();
+            async_call([client,this]()
+            {
+                client->close();
+                delay(100);
+                bleManager.stop();
+            }, 2048, 0);
             break;
         default:
             break;
@@ -281,28 +288,16 @@ private:
         alexaIntegration.applySettings(message->settings);
     }
 
-    void sendBleStatusMessage(const BleStatus status)
+    template <typename TState, typename TMessage, typename TThrottle>
+    void sendThrottledMessage(const TState& state, TThrottle& throttle, const unsigned long now,
+                              AsyncWebSocketClient* client = nullptr)
     {
-        const BleStatusMessage message(status);
-        const auto data = reinterpret_cast<const uint8_t*>(&message);
-        ws.binaryAll(data, sizeof(message));
-        ESP_LOGD(LOG_TAG, "Sent BLE status message: %u", static_cast<uint8_t>(status));
-    }
-
-    void sendAllMessages(AsyncWebSocketClient* client)
-    {
-        sendOutputColorMessage(millis(), client);
-    }
-
-    void sendOutputColorMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
-    {
-        const auto state = output.getState();
-        if (!outputThrottle.shouldSend(now, state) && !client)
+        if (!throttle.shouldSend(now, state) && !client)
             return;
 
-        const ColorMessage message(state);
+        const TMessage message(state);
         const auto data = reinterpret_cast<const uint8_t*>(&message);
-        constexpr size_t len = sizeof(message);
+        constexpr size_t len = sizeof(TMessage);
 
         if (client)
         {
@@ -310,10 +305,34 @@ private:
         }
         else if (AsyncWebSocket::SendStatus::ENQUEUED == ws.binaryAll(data, len))
         {
-            outputThrottle.setLastSent(now, state);
+            throttle.setLastSent(now, state);
         }
     }
 
+    void sendAllMessages(const unsigned long now, AsyncWebSocketClient* client = nullptr)
+    {
+        sendOutputColorMessage(now, client);
+        sendBleStatusMessage(now, client);
+        sendDeviceNameMessage(now, client);
+    }
+
+    void sendOutputColorMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
+    {
+        sendThrottledMessage<std::array<LightState, 4>, ColorMessage>(output.getState(), outputThrottle, now, client);
+    }
+
+    void sendBleStatusMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
+    {
+        sendThrottledMessage<BleStatus, BleStatusMessage>(bleManager.getStatus(), bleStatusThrottle, now, client);
+    }
+
+    void sendDeviceNameMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
+    {
+        std::array<char, DEVICE_NAME_TOTAL_LENGTH> deviceName = {};
+        strncpy(deviceName.data(), wifiManager.getDeviceName(), DEVICE_NAME_MAX_LENGTH);
+        sendThrottledMessage<std::array<char, DEVICE_NAME_TOTAL_LENGTH>, DeviceNameMessage>(
+            deviceName, deviceNameThrottle, now, client);
+    }
 
 #pragma pack(push, 1)
     struct Message
@@ -335,6 +354,35 @@ private:
         }
     };
 
+    struct BleStatusMessage : Message
+    {
+        BleStatus status;
+
+        explicit BleStatusMessage(const BleStatus& status)
+            : Message(WebSocketMessageType::ON_BLE_STATUS), status(status)
+        {
+        }
+    };
+
+    struct DeviceNameMessage : Message
+    {
+        char deviceName[DEVICE_NAME_TOTAL_LENGTH] = {};
+
+        explicit DeviceNameMessage(const std::array<char, DEVICE_NAME_TOTAL_LENGTH>& deviceName)
+            : Message(WebSocketMessageType::ON_DEVICE_NAME)
+        {
+            std::strncpy(this->deviceName, deviceName.data(), DEVICE_NAME_MAX_LENGTH);
+            this->deviceName[DEVICE_NAME_MAX_LENGTH] = '\0';
+        }
+
+        explicit DeviceNameMessage(const char* deviceName)
+            : Message(WebSocketMessageType::ON_DEVICE_NAME)
+        {
+            std::strncpy(this->deviceName, deviceName, DEVICE_NAME_MAX_LENGTH);
+            this->deviceName[DEVICE_NAME_MAX_LENGTH] = '\0';
+        }
+    };
+
     struct HttpCredentialsMessage : Message
     {
         HttpCredentials credentials;
@@ -345,34 +393,12 @@ private:
         }
     };
 
-    struct DeviceNameMessage : Message
-    {
-        char deviceName[DEVICE_NAME_MAX_LENGTH + 1] = {};
-
-        explicit DeviceNameMessage(const char* deviceName)
-            : Message(WebSocketMessageType::ON_DEVICE_NAME)
-        {
-            std::strncpy(this->deviceName, deviceName, DEVICE_NAME_MAX_LENGTH);
-            this->deviceName[DEVICE_NAME_MAX_LENGTH] = '\0';
-        }
-    };
-
     struct WiFiConnectionDetailsMessage : Message
     {
         WiFiConnectionDetails details;
 
         explicit WiFiConnectionDetailsMessage(const WiFiConnectionDetails& details)
             : Message(WebSocketMessageType::ON_WIFI_DETAILS), details(details)
-        {
-        }
-    };
-
-    struct BleStatusMessage : Message
-    {
-        BleStatus status;
-
-        explicit BleStatusMessage(const BleStatus& status)
-            : Message(WebSocketMessageType::ON_BLE_STATUS), status(status)
         {
         }
     };

@@ -1,13 +1,27 @@
 import {getState, restartSystem, resetSystem, setBluetoothState} from "./rest-api.ts";
-import {initWebSocket, sendColorMessage, webSocketHandlers} from "../../app/src/app/web-socket.handler.ts";
+import {
+    initWebSocket,
+    sendColorMessage,
+    webSocketHandlers,
+    sendBleStatus
+} from "../../app/src/app/web-socket.handler.ts";
 import {from, fromEvent, map, mergeMap, tap, throttleTime} from "rxjs";
-import {decodeWebSocketOnColorMessage} from "../../app/src/app/decode.utils.ts"
+import {
+    decodeWebSocketOnColorMessage,
+    decodeWebSocketOnBleStatusMessage,
+    decodeDeviceNameMessage
+} from "../../app/src/app/decode.utils.ts"
 import {WebSocketMessageType} from "../../app/src/app/websocket.message.ts"
+import {BleStatus} from "../../app/src/app/ble.model.ts"
 
 const sliders = Array.from(document.querySelectorAll<HTMLInputElement>('label.slider-label input[type="range"]'));
 const resetButton = document.querySelector<HTMLButtonElement>("#restart-btn")!;
 const restartButton = document.querySelector<HTMLButtonElement>("#reset-btn")!;
 const bluetoothButton = document.querySelector<HTMLButtonElement>("#bluetooth-toggle")!;
+
+loadDeviceState();
+initializeSliders();
+initWebSocket(`ws://${location.host}/ws`);
 
 resetButton.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -25,32 +39,41 @@ restartButton.addEventListener("click", async (e) => {
 
 bluetoothButton.addEventListener("click", async () => {
     const current = bluetoothButton.dataset.enabled === "true";
-    const next = !current;
     bluetoothButton.disabled = true;
-    try {
-        await setBluetoothState(next);
-        bluetoothButton.dataset.enabled = String(next);
-        bluetoothButton.textContent = next ? "Bluetooth: ON" : "Bluetooth: OFF";
-        bluetoothButton.classList.toggle("active", next);
-    } catch (err) {
-        alert("Failed to change Bluetooth state");
-    } finally {
-        bluetoothButton.disabled = false;
-    }
+    sendBleStatus(current ? BleStatus.OFF : BleStatus.ADVERTISING);
 });
 
-loadDeviceState();
-initializeSliders();
-initWebSocket(`ws://${location.host}/ws`);
+webSocketHandlers.set(WebSocketMessageType.ON_BLE_STATUS, (message: ArrayBuffer) => {
+    const {status} = decodeWebSocketOnBleStatusMessage(message);
+    updateBluetoothButton(status);
+    bluetoothButton.disabled = false;
+});
+
+function updateBluetoothButton(status: BleStatus): void {
+    const statusString = status === BleStatus.OFF
+        ? "OFF"
+        : status === BleStatus.ADVERTISING
+            ? "ADVERTISING"
+            : "CONNECTED";
+    bluetoothButton.dataset.enabled = status !== BleStatus.OFF ? "true" : "false";
+    bluetoothButton.textContent = `Bluetooth: ${statusString}`;
+    bluetoothButton.classList.toggle("active", status !== BleStatus.OFF);
+    bluetoothButton.disabled = false;
+}
 
 webSocketHandlers.set(WebSocketMessageType.ON_COLOR, (message: ArrayBuffer) => {
-    const values = decodeWebSocketOnColorMessage(message).values;
+    const {values} = decodeWebSocketOnColorMessage(message);
     values.forEach(({on, value}, index) => {
         const slider = sliders[index];
         slider.value = value.toString();
         updateSliderVisual(slider, getComputedStyle(slider.closest(".slider-label")!).getPropertyValue("--color").trim());
     })
 });
+
+webSocketHandlers.set(WebSocketMessageType.ON_DEVICE_NAME, (message: ArrayBuffer) => {
+    const {deviceName} = decodeDeviceNameMessage(message);
+    updateText("device-name", deviceName);
+})
 
 function updateSliderVisual(slider: HTMLInputElement, color: string) {
     const [_, r, g, b] = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/)!;
@@ -103,7 +126,6 @@ async function loadDeviceState(): Promise<void> {
         updateText("alexa-mode", state.alexa.mode);
         updateText("alexa-names", state.alexa.names.join(", "));
 
-        updateText("ble-status", state.ble.status);
         updateText("ota-status", state.ota.state);
     } catch (error) {
         console.error("Failed to load device state", error);
