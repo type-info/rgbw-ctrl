@@ -4,7 +4,53 @@ import {from, fromEvent, map, mergeMap, tap, throttleTime} from "rxjs";
 import {decodeWebSocketOnColorMessage} from "../../app/src/app/decode.utils.ts"
 import {WebSocketMessageType} from "../../app/src/app/websocket.message.ts"
 
-const sliders = document.querySelectorAll<HTMLInputElement>('label.slider-label input[type="range"]');
+const sliders = Array.from(document.querySelectorAll<HTMLInputElement>('label.slider-label input[type="range"]'));
+const resetButton = document.querySelector<HTMLButtonElement>("#restart-btn")!;
+const restartButton = document.querySelector<HTMLButtonElement>("#reset-btn")!;
+const bluetoothButton = document.querySelector<HTMLButtonElement>("#bluetooth-toggle")!;
+
+resetButton.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (confirm("Restart the device?")) {
+        await restartSystem();
+    }
+});
+
+restartButton.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (confirm("Factory reset the device?")) {
+        await resetSystem();
+    }
+});
+
+bluetoothButton.addEventListener("click", async () => {
+    const current = bluetoothButton.dataset.enabled === "true";
+    const next = !current;
+    bluetoothButton.disabled = true;
+    try {
+        await setBluetoothState(next);
+        bluetoothButton.dataset.enabled = String(next);
+        bluetoothButton.textContent = next ? "Bluetooth: ON" : "Bluetooth: OFF";
+        bluetoothButton.classList.toggle("active", next);
+    } catch (err) {
+        alert("Failed to change Bluetooth state");
+    } finally {
+        bluetoothButton.disabled = false;
+    }
+});
+
+loadDeviceState();
+initializeSliders();
+initWebSocket(`ws://${location.host}/ws`);
+
+webSocketHandlers.set(WebSocketMessageType.ON_COLOR, (message: ArrayBuffer) => {
+    const values = decodeWebSocketOnColorMessage(message).values;
+    values.forEach(({on, value}, index) => {
+        const slider = sliders[index];
+        slider.value = value.toString();
+        updateSliderVisual(slider, getComputedStyle(slider.closest(".slider-label")!).getPropertyValue("--color").trim());
+    })
+});
 
 function updateSliderVisual(slider: HTMLInputElement, color: string) {
     const [_, r, g, b] = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/)!;
@@ -30,8 +76,7 @@ function initializeSliders(): void {
 }
 
 function getColorValues(): [number, number, number, number] {
-    const sliders = document.querySelectorAll<HTMLInputElement>('label.slider-label input[type="range"]');
-    return Array.from(sliders).map(s => parseInt(s.value, 10)) as [number, number, number, number];
+    return sliders.map(s => parseInt(s.value, 10)) as [number, number, number, number];
 }
 
 function updateText(id: string, value: string): void {
@@ -64,53 +109,3 @@ async function loadDeviceState(): Promise<void> {
         console.error("Failed to load device state", error);
     }
 }
-
-function setupBluetoothToggle(): void {
-    const button = document.getElementById("bluetooth-toggle") as HTMLButtonElement;
-    button.addEventListener("click", async () => {
-        const current = button.dataset.enabled === "true";
-        const next = !current;
-        button.disabled = true;
-        try {
-            await setBluetoothState(next);
-            button.dataset.enabled = String(next);
-            button.textContent = next ? "Bluetooth: ON" : "Bluetooth: OFF";
-            button.classList.toggle("active", next);
-        } catch (err) {
-            alert("Failed to change Bluetooth state");
-        } finally {
-            button.disabled = false;
-        }
-    });
-}
-
-function setupSystemButtons(): void {
-    document.getElementById("restart-btn")?.addEventListener("click", async (e) => {
-        e.preventDefault();
-        if (confirm("Restart the device?")) {
-            await restartSystem();
-        }
-    });
-
-    document.getElementById("reset-btn")?.addEventListener("click", async (e) => {
-        e.preventDefault();
-        if (confirm("Factory reset the device?")) {
-            await resetSystem();
-        }
-    });
-}
-
-loadDeviceState();
-initializeSliders();
-setupBluetoothToggle();
-setupSystemButtons();
-initWebSocket(`ws://${location.host}/ws`);
-
-webSocketHandlers.set(WebSocketMessageType.ON_COLOR, (message: ArrayBuffer) => {
-    const values = decodeWebSocketOnColorMessage(message).values;
-    values.forEach(({on, value}, index) => {
-        const slider = sliders[index];
-        slider.value = value.toString();
-        updateSliderVisual(slider, getComputedStyle(slider.closest(".slider-label")!).getPropertyValue("--color").trim());
-    })
-});
