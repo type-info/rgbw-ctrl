@@ -52,22 +52,40 @@
 
 <section id="light-controls">
     <h2>Light Control</h2>
-    <label class="slider-label r" for="slider-r">
-        <span>0%</span>
-        <input id="slider-r" type="range" min="0" max="255" value="0"/>
-    </label>
-    <label class="slider-label g" for="slider-g">
-        <span>0%</span>
-        <input id="slider-g" type="range" min="0" max="255" value="0"/>
-    </label>
-    <label class="slider-label b" for="slider-b">
-        <span>0%</span>
-        <input id="slider-b" type="range" min="0" max="255" value="0"/>
-    </label>
-    <label class="slider-label w" for="slider-w">
-        <span>0%</span>
-        <input id="slider-w" type="range" min="0" max="255" value="0"/>
-    </label>
+    <div>
+        <label class="slider r" for="slider-r">
+            <span>0%</span>
+            <input id="slider-r" type="range" min="0" max="255" value="0"/>
+        </label>
+        <label class="switch r" for="switch-r">
+            <input id="switch-r" type="checkbox">
+            <span></span>
+        </label>
+        <label class="slider g" for="slider-g">
+            <span>0%</span>
+            <input id="slider-g" type="range" min="0" max="255" value="0"/>
+        </label>
+        <label class="switch g" for="switch-g">
+            <input id="switch-g" type="checkbox">
+            <span></span>
+        </label>
+        <label class="slider b" for="slider-b">
+            <span>0%</span>
+            <input id="slider-b" type="range" min="0" max="255" value="0"/>
+        </label>
+        <label class="switch b" for="switch-b">
+            <input id="switch-b" type="checkbox">
+            <span></span>
+        </label>
+        <label class="slider w" for="slider-w">
+            <span>0%</span>
+            <input id="slider-w" type="range" min="0" max="255" value="0"/>
+        </label>
+        <label class="switch w" for="switch-w">
+            <input id="switch-w" type="checkbox">
+            <span></span>
+        </label>
+    </div>
 </section>
 
 <script type="module" src="src/index.ts"></script>

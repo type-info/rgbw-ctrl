@@ -33,7 +33,7 @@ section {
     text-align: center;
     margin-top: 0;
     font-size: 1.2em;
-    color: #4CAF50;
+    color: rgb(76, 214, 65);
   }
 
   ul {
@@ -63,7 +63,7 @@ button,
 a {
   text-align: center;
   padding: 10px 20px;
-  background: #4CAF50;
+  background: rgb(76, 214, 65);
   color: white;
   border: none;
   border-radius: 5px;
@@ -73,14 +73,14 @@ a {
   transition: background 0.2s ease;
 
   &:hover {
-    background: #37803b;
+    filter: brightness(0.9);
   }
 
   &.active {
-    background: #2196F3;
+    background: rgb(60, 170, 223);
 
     &:hover {
-      background: #0b7dda;
+      filter: brightness(1.1);
     }
   }
 
@@ -91,7 +91,7 @@ a {
   }
 }
 
-.slider-label {
+.slider {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -99,7 +99,6 @@ a {
   border-radius: 8px;
   padding: 0.5em 1em;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-top: 0.5em;
 
   span {
     width: 2em;
@@ -134,22 +133,84 @@ a {
       height: 16px;
     }
   }
+}
 
-  &.r {
-    --color: rgb(235, 43, 71);
+#light-controls > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 25px;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
   }
 
-  &.g {
-    --color: rgb(76, 214, 65);
+  span {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-lighter);
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 34px;
   }
 
-  &.b {
-    --color: rgb(60, 170, 223);
+  span:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 50%;
   }
 
-  &.w {
-    --color: rgb(239, 233, 195);
+  input:checked + span {
+    background-color: var(--color);
   }
+
+  input:focus + span {
+    box-shadow: 0 0 1px var(--color);
+  }
+
+  input:checked + span:before {
+    transform: translateX(15px);
+  }
+}
+
+.r {
+  --color: rgb(235, 43, 71);
+  --color-lighter: rgba(235, 43, 71, 0.3);
+}
+
+.g {
+  --color: rgb(76, 214, 65);
+  --color-lighter: rgba(76, 214, 65, 0.3);
+}
+
+.b {
+  --color: rgb(60, 170, 223);
+  --color-lighter: rgba(60, 170, 223, 0.3);
+}
+
+.w {
+  --color: rgb(239, 233, 195);
+  --color-lighter: rgba(239, 233, 195, 0.3);
 }
 
 @media (max-width: 480px) {

@@ -1,4 +1,4 @@
-import {getState, restartSystem, resetSystem, setBluetoothState} from "./rest-api.ts";
+import {getState, restartSystem, resetSystem} from "./rest-api.ts";
 import {
     initWebSocket,
     sendColorMessage,
@@ -14,13 +14,13 @@ import {
 import {WebSocketMessageType} from "../../app/src/app/websocket.message.ts"
 import {BleStatus} from "../../app/src/app/ble.model.ts"
 
-const sliders = Array.from(document.querySelectorAll<HTMLInputElement>('label.slider-label input[type="range"]'));
+const sliders = Array.from(document.querySelectorAll<HTMLInputElement>('label.slider input[type="range"]'));
+const switches = Array.from(document.querySelectorAll<HTMLInputElement>('label.switch input[type="checkbox"]'));
 const resetButton = document.querySelector<HTMLButtonElement>("#restart-btn")!;
 const restartButton = document.querySelector<HTMLButtonElement>("#reset-btn")!;
 const bluetoothButton = document.querySelector<HTMLButtonElement>("#bluetooth-toggle")!;
 
 loadDeviceState();
-initializeSliders();
 initWebSocket(`ws://${location.host}/ws`);
 
 resetButton.addEventListener("click", async (e) => {
@@ -43,11 +43,64 @@ bluetoothButton.addEventListener("click", async () => {
     sendBleStatus(current ? BleStatus.OFF : BleStatus.ADVERTISING);
 });
 
+switches.forEach((switchEl, index) => {
+    switchEl.addEventListener("change", (event) => {
+        const slider = sliders[index];
+        const value = parseInt(slider.value, 10);
+        const on = switchEl.checked;
+        if (on && value === 0) {
+            slider.value = "255";
+            slider.dispatchEvent(new Event('input'));
+        }
+        if (!on && value > 0) {
+            slider.value = "0";
+            slider.dispatchEvent(new Event('input'));
+        }
+    });
+});
+
+from(sliders).pipe(
+    mergeMap(slider => fromEvent(slider, 'input')),
+    tap(event => {
+        const slider = event.target as HTMLInputElement;
+        const label = slider.parentElement!;
+        const color = getComputedStyle(label!).getPropertyValue('--color').trim();
+        updateSliderVisual(slider, color);
+    }),
+    throttleTime(200, undefined, {leading: true, trailing: true}),
+    map(() => getColorValues()),
+).subscribe(values => sendColorMessage(...values));
+
 webSocketHandlers.set(WebSocketMessageType.ON_BLE_STATUS, (message: ArrayBuffer) => {
     const {status} = decodeWebSocketOnBleStatusMessage(message);
     updateBluetoothButton(status);
     bluetoothButton.disabled = false;
 });
+
+webSocketHandlers.set(WebSocketMessageType.ON_COLOR, (message: ArrayBuffer) => {
+    const {values} = decodeWebSocketOnColorMessage(message);
+    values.forEach(({on, value}, index) => {
+        const slider = sliders[index];
+        const switchEl = switches[index];
+        slider.value = value.toString();
+        switchEl.checked = on;
+        updateSliderVisual(slider, getComputedStyle(slider.parentElement!).getPropertyValue("--color").trim());
+    })
+});
+
+webSocketHandlers.set(WebSocketMessageType.ON_DEVICE_NAME, (message: ArrayBuffer) => {
+    const {deviceName} = decodeDeviceNameMessage(message);
+    updateText("device-name", deviceName);
+});
+
+function getColorValues(): [number, number, number, number] {
+    return sliders.map(s => parseInt(s.value, 10)) as [number, number, number, number];
+}
+
+function updateText(id: string, value: string): void {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
 
 function updateBluetoothButton(status: BleStatus): void {
     const statusString = status === BleStatus.OFF
@@ -61,20 +114,6 @@ function updateBluetoothButton(status: BleStatus): void {
     bluetoothButton.disabled = false;
 }
 
-webSocketHandlers.set(WebSocketMessageType.ON_COLOR, (message: ArrayBuffer) => {
-    const {values} = decodeWebSocketOnColorMessage(message);
-    values.forEach(({on, value}, index) => {
-        const slider = sliders[index];
-        slider.value = value.toString();
-        updateSliderVisual(slider, getComputedStyle(slider.closest(".slider-label")!).getPropertyValue("--color").trim());
-    })
-});
-
-webSocketHandlers.set(WebSocketMessageType.ON_DEVICE_NAME, (message: ArrayBuffer) => {
-    const {deviceName} = decodeDeviceNameMessage(message);
-    updateText("device-name", deviceName);
-})
-
 function updateSliderVisual(slider: HTMLInputElement, color: string) {
     const [_, r, g, b] = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/)!;
     const value = parseInt(slider.value, 10);
@@ -82,29 +121,6 @@ function updateSliderVisual(slider: HTMLInputElement, color: string) {
     slider.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${percentage}%, rgba(${r}, ${g}, ${b}, 0.3) ${percentage}%, rgba(${r}, ${g}, ${b}, 0.3) 100%)`;
     const labelSpan = slider.parentElement?.querySelector("span");
     if (labelSpan) labelSpan.textContent = `${percentage}%`;
-}
-
-function initializeSliders(): void {
-    from(sliders).pipe(
-        mergeMap(slider => fromEvent(slider, 'input')),
-        tap(event => {
-            const slider = event.target as HTMLInputElement;
-            const label = slider.closest('.slider-label');
-            const color = getComputedStyle(label!).getPropertyValue('--color').trim();
-            updateSliderVisual(slider, color);
-        }),
-        throttleTime(300, undefined, {leading: true, trailing: true}),
-        map(() => getColorValues()),
-    ).subscribe(values => sendColorMessage(...values));
-}
-
-function getColorValues(): [number, number, number, number] {
-    return sliders.map(s => parseInt(s.value, 10)) as [number, number, number, number];
-}
-
-function updateText(id: string, value: string): void {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
 }
 
 async function loadDeviceState(): Promise<void> {
