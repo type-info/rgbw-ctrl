@@ -110,8 +110,8 @@ private:
             if (request->url() != "/update")
                 return false;
 
-            if (request->method() == HTTP_POST || request->method() == HTTP_GET)
-                return true;
+            if (request->method() != HTTP_POST && request->method() != HTTP_GET)
+                return false;
 
             if (asyncAuthenticationMiddleware.allowed(request))
                 request->setAttribute(ATTR_AUTHENTICATED, true);

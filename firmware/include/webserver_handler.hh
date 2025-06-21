@@ -47,7 +47,7 @@ public:
         return &webServer;
     }
 
-    [[nodiscard]] AsyncAuthenticationMiddleware& getAuthenticationMiddleware()
+    [[nodiscard]] const AsyncAuthenticationMiddleware& getAuthenticationMiddleware() const
     {
         return authMiddleware;
     }
@@ -91,7 +91,7 @@ private:
         authMiddleware.setPassword(credentials.password);
         authMiddleware.setRealm("rgbw-ctrl");
         authMiddleware.setAuthFailureMessage("Authentication failed");
-        authMiddleware.setAuthType(AsyncAuthType::AUTH_BASIC);
+        authMiddleware.setAuthType(AUTH_BASIC);
         authMiddleware.generateHash();
     }
 
