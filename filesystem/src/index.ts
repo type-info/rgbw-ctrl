@@ -9,7 +9,8 @@ import {
     decodeDeviceNameMessage,
     decodeWebSocketOnBleStatusMessage,
     decodeWebSocketOnColorMessage,
-    decodeWebSocketOnOtaProgressMessage
+    decodeWebSocketOnOtaProgressMessage,
+    decodeWebSocketHeapInfoMessage
 } from "../../app/src/app/decode.utils.ts"
 import {getState, resetSystem, restartSystem} from "../../app/src/app/rest-api.ts";
 import {otaStatusToString} from "../../app/src/app/ota.model.ts";
@@ -99,6 +100,11 @@ webSocketHandlers.set(WebSocketMessageType.ON_OTA_PROGRESS, (message: ArrayBuffe
         : 0;
     const text = otaStatusToString(status);
     updateText("ota-status", percentage > 0 ? `${text} (${percentage}%)` : text);
+});
+
+webSocketHandlers.set(WebSocketMessageType.ON_HEAP, (message: ArrayBuffer) => {
+    const {freeHeap} = decodeWebSocketHeapInfoMessage(message);
+    updateText("heap", `${freeHeap}`);
 });
 
 function getColorValues(): [number, number, number, number] {

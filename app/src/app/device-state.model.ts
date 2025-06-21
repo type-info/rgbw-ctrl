@@ -1,4 +1,5 @@
-import { LightState } from "../../app/src/app/light.model";
+import {OtaStatusString} from './ota.model';
+import {LightState} from './light.model';
 
 export type WiFiStatusString =
     | "DISCONNECTED"

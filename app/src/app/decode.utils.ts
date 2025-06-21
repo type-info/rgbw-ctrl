@@ -22,7 +22,8 @@ import {
   WebSocketColorMessage,
   WebSocketMessageType,
   WebSocketDeviceNameMessage,
-  WebSocketOtaProgressMessage
+  WebSocketOtaProgressMessage,
+  WebSocketHeapInfoMessage
 } from './websocket.message';
 import {LightState} from '../app/light.model';
 
@@ -198,5 +199,15 @@ export function decodeWebSocketOnOtaProgressMessage(buffer: ArrayBuffer): WebSoc
     status,
     totalBytesExpected,
     totalBytesReceived
+  };
+}
+
+export function decodeWebSocketHeapInfoMessage(buffer: ArrayBuffer): WebSocketHeapInfoMessage {
+  const reader = new BufferReader(new Uint8Array(buffer));
+  const type = reader.readByte();
+  const freeHeap = reader.readUint32();
+  return {
+    type,
+    freeHeap
   };
 }

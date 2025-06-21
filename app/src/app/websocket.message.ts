@@ -48,7 +48,7 @@ export interface WebSocketAlexaIntegrationSettingsMessage {
   settings: AlexaIntegrationSettings;
 }
 
-export interface WebSocketHeapMessage {
+export interface WebSocketHeapInfoMessage {
   type: WebSocketMessageType.ON_HEAP;
   freeHeap: number;
 }
@@ -74,7 +74,7 @@ export type WebSocketMessage =
   | WebSocketWiFiConnectionDetailsMessage
   | WebSocketBleStatusMessage
   | WebSocketAlexaIntegrationSettingsMessage
-  | WebSocketHeapMessage
+  | WebSocketHeapInfoMessage
   | WebSocketWiFiStatusMessage
   | WebSocketWiFiScanStatusMessage
   | WebSocketOtaProgressMessage;
