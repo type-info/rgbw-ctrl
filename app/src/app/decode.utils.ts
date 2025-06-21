@@ -21,7 +21,8 @@ import {
   WebSocketBleStatusMessage,
   WebSocketColorMessage,
   WebSocketMessageType,
-  WebSocketDeviceNameMessage
+  WebSocketDeviceNameMessage,
+  WebSocketOtaProgressMessage
 } from './websocket.message';
 import {LightState} from '../app/light.model';
 
@@ -184,4 +185,18 @@ export function decodeWebSocketOnColorMessage(buffer: ArrayBuffer): WebSocketCol
   ];
 
   return {type: WebSocketMessageType.ON_COLOR, values};
+}
+
+export function decodeWebSocketOnOtaProgressMessage(buffer: ArrayBuffer): WebSocketOtaProgressMessage {
+  const reader = new BufferReader(new Uint8Array(buffer));
+  const type = reader.readByte();
+  const status = reader.readByte();
+  const totalBytesExpected = reader.readUint32();
+  const totalBytesReceived = reader.readUint32();
+  return {
+    type,
+    status,
+    totalBytesExpected,
+    totalBytesReceived
+  };
 }

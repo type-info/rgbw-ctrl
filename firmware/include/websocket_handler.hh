@@ -34,6 +34,7 @@ class WebSocketHandler
     ThrottledValue<std::array<LightState, 4>> outputThrottle{100};
     ThrottledValue<BleStatus> bleStatusThrottle{100};
     ThrottledValue<std::array<char, DEVICE_NAME_TOTAL_LENGTH>> deviceNameThrottle{100};
+    ThrottledValue<OtaState> otaStateThrottle{100};
 
 public:
     WebSocketHandler(
@@ -314,16 +315,19 @@ private:
         sendOutputColorMessage(now, client);
         sendBleStatusMessage(now, client);
         sendDeviceNameMessage(now, client);
+        sendOtaProgressMessage(now, client);
     }
 
     void sendOutputColorMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
     {
-        sendThrottledMessage<std::array<LightState, 4>, ColorMessage>(output.getState(), outputThrottle, now, client);
+        sendThrottledMessage<std::array<LightState, 4>, ColorMessage>(
+            output.getState(), outputThrottle, now, client);
     }
 
     void sendBleStatusMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
     {
-        sendThrottledMessage<BleStatus, BleStatusMessage>(bleManager.getStatus(), bleStatusThrottle, now, client);
+        sendThrottledMessage<BleStatus, BleStatusMessage>(
+            bleManager.getStatus(), bleStatusThrottle, now, client);
     }
 
     void sendDeviceNameMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
@@ -332,6 +336,12 @@ private:
         strncpy(deviceName.data(), wifiManager.getDeviceName(), DEVICE_NAME_MAX_LENGTH);
         sendThrottledMessage<std::array<char, DEVICE_NAME_TOTAL_LENGTH>, DeviceNameMessage>(
             deviceName, deviceNameThrottle, now, client);
+    }
+
+    void sendOtaProgressMessage(const unsigned long now, AsyncWebSocketClient* client = nullptr)
+    {
+        sendThrottledMessage<OtaState, OtaProgressMessage>(
+            otaHandler.getState(), otaStateThrottle, now, client);
     }
 
 #pragma pack(push, 1)
@@ -409,6 +419,17 @@ private:
 
         explicit AlexaIntegrationSettingsMessage(const AlexaIntegrationSettings& settings)
             : Message(WebSocketMessageType::ON_ALEXA_INTEGRATION_SETTINGS), settings(settings)
+        {
+        }
+    };
+
+    struct OtaProgressMessage : Message
+    {
+        OtaState otaState;
+
+        explicit OtaProgressMessage(const OtaState& otaState)
+            : Message(WebSocketMessageType::ON_OTA_PROGRESS),
+              otaState(otaState)
         {
         }
     };

@@ -1,16 +1,18 @@
-import {getState, restartSystem, resetSystem} from "./rest-api.ts";
-import {
-    initWebSocket,
-    sendColorMessage,
-    webSocketHandlers,
-    sendBleStatus
-} from "../../app/src/app/web-socket.handler.ts";
 import {from, fromEvent, map, mergeMap, tap, throttleTime} from "rxjs";
 import {
-    decodeWebSocketOnColorMessage,
+    initWebSocket,
+    sendBleStatus,
+    sendColorMessage,
+    webSocketHandlers
+} from "../../app/src/app/web-socket.handler.ts";
+import {
+    decodeDeviceNameMessage,
     decodeWebSocketOnBleStatusMessage,
-    decodeDeviceNameMessage
+    decodeWebSocketOnColorMessage,
+    decodeWebSocketOnOtaProgressMessage
 } from "../../app/src/app/decode.utils.ts"
+import {getState, resetSystem, restartSystem} from "../../app/src/app/rest-api.ts";
+import {otaStatusToString} from "../../app/src/app/ota.model.ts";
 import {WebSocketMessageType} from "../../app/src/app/websocket.message.ts"
 import {BleStatus} from "../../app/src/app/ble.model.ts"
 
@@ -19,9 +21,6 @@ const switches = Array.from(document.querySelectorAll<HTMLInputElement>('label.s
 const resetButton = document.querySelector<HTMLButtonElement>("#restart-btn")!;
 const restartButton = document.querySelector<HTMLButtonElement>("#reset-btn")!;
 const bluetoothButton = document.querySelector<HTMLButtonElement>("#bluetooth-toggle")!;
-
-loadDeviceState();
-initWebSocket(`ws://${location.host}/ws`);
 
 resetButton.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -44,7 +43,7 @@ bluetoothButton.addEventListener("click", async () => {
 });
 
 switches.forEach((switchEl, index) => {
-    switchEl.addEventListener("change", (event) => {
+    switchEl.addEventListener("change", () => {
         const slider = sliders[index];
         const value = parseInt(slider.value, 10);
         const on = switchEl.checked;
@@ -91,6 +90,15 @@ webSocketHandlers.set(WebSocketMessageType.ON_COLOR, (message: ArrayBuffer) => {
 webSocketHandlers.set(WebSocketMessageType.ON_DEVICE_NAME, (message: ArrayBuffer) => {
     const {deviceName} = decodeDeviceNameMessage(message);
     updateText("device-name", deviceName);
+});
+
+webSocketHandlers.set(WebSocketMessageType.ON_OTA_PROGRESS, (message: ArrayBuffer) => {
+    const {status, totalBytesExpected, totalBytesReceived} = decodeWebSocketOnOtaProgressMessage(message);
+    const percentage = totalBytesExpected > 0
+        ? Math.round((totalBytesReceived / totalBytesExpected) * 100)
+        : 0;
+    const text = otaStatusToString(status);
+    updateText("ota-status", percentage > 0 ? `${text} (${percentage}%)` : text);
 });
 
 function getColorValues(): [number, number, number, number] {
@@ -142,8 +150,11 @@ async function loadDeviceState(): Promise<void> {
         updateText("alexa-mode", state.alexa.mode);
         updateText("alexa-names", state.alexa.names.join(", "));
 
-        updateText("ota-status", state.ota.state);
+        updateText("ota-status", state.ota.status);
     } catch (error) {
         console.error("Failed to load device state", error);
     }
 }
+
+loadDeviceState()
+    .then(() => initWebSocket(`ws://${location.host}/ws`));

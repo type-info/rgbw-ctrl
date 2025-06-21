@@ -85,6 +85,6 @@ void loop()
         bleManager.getStatus(),
         wifiManager.getScanStatus(),
         wifiManager.getStatus(),
-        otaHandler.getState() == OtaHandler::UpdateState::Started
+        otaHandler.getStatus() == OtaStatus::Started
     );
 }

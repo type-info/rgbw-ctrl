@@ -1,8 +1,9 @@
-import { AlexaIntegrationSettings } from "./alexa-integration-settings.model";
-import { HttpCredentials } from "./http-credentials.model";
-import { WiFiConnectionDetails, WiFiScanStatus, WiFiStatus } from "./wifi.model";
+import {AlexaIntegrationSettings} from "./alexa-integration-settings.model";
+import {HttpCredentials} from "./http-credentials.model";
+import {WiFiConnectionDetails, WiFiScanStatus, WiFiStatus} from "./wifi.model";
 import {BleStatus} from './ble.model';
 import {LightState} from './light.model';
+import {OtaState} from './ota.model';
 
 export enum WebSocketMessageType {
   ON_COLOR = 0,
@@ -62,9 +63,8 @@ export interface WebSocketWiFiScanStatusMessage {
   status: WiFiScanStatus;
 }
 
-export interface WebSocketOtaProgressMessage {
+export interface WebSocketOtaProgressMessage extends OtaState {
   type: WebSocketMessageType.ON_OTA_PROGRESS;
-  progress: number;
 }
 
 export type WebSocketMessage =

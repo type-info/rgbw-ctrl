@@ -56,7 +56,7 @@ public:
         alexaIntegration.getSettings().toJson(doc["alexa"].to<JsonObject>());
         output.toJson(doc["output"].to<JsonArray>());
         bleManager.toJson(doc["ble"].to<JsonObject>());
-        otaHandler.toJson(doc["ota"].to<JsonObject>());
+        otaHandler.getState().toJson(doc["ota"].to<JsonObject>());
 
         response->addHeader("Cache-Control", "no-store");
         response->setLength();

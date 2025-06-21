@@ -20,25 +20,30 @@ export type BleStatusString =
     | "ADVERTISING"
     | "CONNECTED";
 
-export type OtaStatusString =
-    | "Idle"
-    | "Update in progress"
-    | "Update completed successfully"
-    | "Update failed";
+
+
+export type OtaState = {
+    status: OtaStatusString,
+    totalBytesExpected: number,
+    totalBytesReceived: number,
+}
+
+export type WiFiDetailsState = {
+    ssid: string,
+    mac: string,
+    ip: string,
+    gateway: string,
+    subnet: string,
+    dns: string
+};
+
 
 export type DeviceState = {
     "deviceName": string,
     "firmwareVersion": string,
     "heap": number,
     "wifi": {
-        "details": {
-            "ssid": string,
-            "mac": string,
-            "ip": string,
-            "gateway": string,
-            "subnet": string,
-            "dns": string
-        },
+        "details": WiFiDetailsState,
         "status": WiFiStatusString
     },
     "alexa": {
@@ -49,7 +54,5 @@ export type DeviceState = {
     "ble": {
         "status": BleStatusString
     },
-    "ota": {
-        "state": OtaStatusString
-    }
+    "ota": OtaState
 }

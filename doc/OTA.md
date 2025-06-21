@@ -10,8 +10,10 @@ The OTA update process allows firmware and filesystem images to be uploaded to t
 
 Supported updates:
 
-* 🔧 Firmware (U\_FLASH)
-* 📁 Filesystem (U\_SPIFFS for LittleFS partitions)
+* 🔧 Firmware (`U_FLASH`)
+* 📁 Filesystem (`U_SPIFFS` for LittleFS partitions)
+
+Multiple requests to the `/update` endpoint are allowed concurrently, but only the first one will be processed. All others will be rejected with an appropriate error. This ensures the system remains robust under concurrent access.
 
 ---
 
@@ -118,15 +120,31 @@ request->onDisconnect([]() {
 
 ---
 
-## Progress Reporting
+## Progress and Status Retrieval
 
-The handler supports a callback to monitor update progress:
+Instead of receiving progress callbacks, consumers must periodically poll the update state using:
 
 ```cpp
-void setOnProgressCallback(std::function<void(UpdateState, uint8_t)> callback);
+OtaHandler::getState(); // Returns an OtaState struct with status, totalBytesExpected, totalBytesReceived
 ```
 
-The callback receives percentage (0–100) during upload based on `Content-Length`.
+Or if only the status is needed:
+
+```cpp
+OtaHandler::getStatus(); // Returns OtaStatus enum value
+```
+
+The `OtaState` struct includes the following fields:
+
+```cpp
+struct OtaState {
+    OtaStatus status;
+    uint32_t totalBytesExpected;
+    uint32_t totalBytesReceived;
+};
+```
+
+This approach avoids coupling to asynchronous callbacks and allows consistent polling through BLE, WebSocket, or REST.
 
 ---
 
@@ -136,9 +154,14 @@ OTA errors returned to the client (via HTTP 500) are truncated to a maximum of 6
 
 ---
 
+## Thread Safety and Concurrency
+
+Internally, the update state is tracked using `std::atomic` to ensure thread-safe transitions and consistent reads across callbacks. Only the first valid OTA request is accepted and processed; subsequent simultaneous requests are safely rejected with a 400 response.
+
+Monitoring variables such as `totalBytesExpected` and `totalBytesReceived` are declared as `volatile` to reflect real-time progress. These are suitable for passive reads, such as progress indicators.
+
+---
+
 ## Conclusion
 
-The OTA handler offers a safe and extensible mechanism to update the ESP32 remotely, with proper authentication, state control, and progress monitoring.
-It integrates tightly with Bluetooth status and provides detailed error handling to cover edge cases.
-
-Internally, the update state is tracked using `std::atomic` to ensure thread-safe transitions and consistent reads across callbacks.
+The OTA handler offers a safe and extensible mechanism to update the ESP32 remotely, with proper authentication, state control, and progress monitoring. It integrates tightly with Bluetooth status and provides detailed error handling to cover edge cases.
